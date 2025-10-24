@@ -2,10 +2,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import CaptchaBox from "../components/CaptchaBox";
-import { generateCaptcha, verifyCaptcha } from "../lib/captcha";
+import GoogleRecaptcha from "../components/GoogleRecaptcha";
+import ReCAPTCHA from "react-google-recaptcha";
 import { 
   getAttemptsLeft,  
   decAttempt, 
@@ -18,25 +18,24 @@ import {
 const schema = z.object({
   username: z.string().min(1, "Ingrese el usuario"),
   password: z.string().min(1, "Ingrese la contraseña"),
-  captcha: z.string().min(1, "Ingrese el captcha"),
 });
 
 type FormData = z.infer<typeof schema>;
 
 export default function Login() {
   const navigate = useNavigate();
-  const [captcha, setCaptcha] = useState(generateCaptcha());
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(getAttemptsLeft());
   const [blocked, setBlocked] = useState(isBlocked());
   const [timeRemaining, setTimeRemaining] = useState(getBlockTimeRemaining());
   const [hasFailedAttempts, setHasFailedAttempts] = useState(false);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   // Actualizar estado de bloqueo cada segundo
@@ -58,9 +57,25 @@ export default function Login() {
     return () => clearInterval(interval);
   }, [blocked]);
 
-  function refreshCaptcha() {
-    setCaptcha(generateCaptcha());
-    setValue("captcha", "");
+  function onRecaptchaChange(token: string | null) {
+    setRecaptchaToken(token);
+  }
+
+  function onRecaptchaExpired() {
+    setRecaptchaToken(null);
+    toast.error("El reCAPTCHA ha expirado. Por favor, verifique nuevamente.");
+  }
+
+  function onRecaptchaError() {
+    setRecaptchaToken(null);
+    toast.error("Error en reCAPTCHA. Por favor, inténtelo nuevamente.");
+  }
+
+  function resetRecaptcha() {
+    if (recaptchaRef.current) {
+      recaptchaRef.current.reset();
+    }
+    setRecaptchaToken(null);
   }
 
   function onForgotPassword() {
@@ -73,12 +88,8 @@ export default function Login() {
       return;
     }
 
-    if (!verifyCaptcha(data.captcha, captcha)) {
-      const left = decAttempt();
-      setAttemptsLeft(left);
-      setHasFailedAttempts(true);
-      refreshCaptcha();
-      toast.error(`Captcha incorrecto. Intentos restantes: ${left}`);
+    if (!recaptchaToken) {
+      toast.error("Por favor, complete la verificación reCAPTCHA.");
       return;
     }
 
@@ -87,7 +98,7 @@ export default function Login() {
       const left = decAttempt();
       setAttemptsLeft(left);
       setHasFailedAttempts(true);
-      refreshCaptcha();
+      resetRecaptcha();
       toast.error(`Credenciales incorrectas. Intentos restantes: ${left}`);
       return;
     }
@@ -204,26 +215,23 @@ export default function Login() {
              )}
           </div>
 
-          {/* Campo Captcha */}
+          {/* Campo reCAPTCHA */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               Verificación de seguridad
             </label>
-            <div className="space-y-3">
-              <CaptchaBox value={captcha} onRefresh={refreshCaptcha} />
-              <input 
-                type="text" 
-                placeholder="Ingrese el código mostrado arriba"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                {...register("captcha")} 
-              />
-            </div>
-            {errors.captcha && (
+            <GoogleRecaptcha
+              ref={recaptchaRef}
+              onChange={onRecaptchaChange}
+              onExpired={onRecaptchaExpired}
+              onError={onRecaptchaError}
+            />
+            {!recaptchaToken && hasFailedAttempts && (
               <p className="text-sm text-red-600 flex items-center gap-1">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                {errors.captcha.message}
+                Por favor, complete la verificación reCAPTCHA
               </p>
             )}
           </div>
