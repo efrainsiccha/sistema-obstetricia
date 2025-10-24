@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import CaptchaBox from "../components/CaptchaBox";
 import { generateCaptcha, verifyCaptcha } from "../lib/captcha";
 import { 
@@ -23,6 +24,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function Login() {
+  const navigate = useNavigate();
   const [captcha, setCaptcha] = useState(generateCaptcha());
   const [showPassword, setShowPassword] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(getAttemptsLeft());
@@ -95,7 +97,7 @@ export default function Login() {
     resetAttempts();
     setAttemptsLeft(getAttemptsLeft());
     setHasFailedAttempts(false);
-    // Redirección futura: navigate("/dashboard")
+    navigate("/home");
   };
 
   return (
