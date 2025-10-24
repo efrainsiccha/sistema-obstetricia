@@ -73,7 +73,7 @@ export default function Home() {
               <Button variant="ghost" size="icon">
                 <Settings className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/login')}>
                 <LogOut className="w-5 h-5" />
               </Button>
             </div>
