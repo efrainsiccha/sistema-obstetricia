@@ -8,22 +8,25 @@ import ProgramasPage from "./pages/ProgramasPage";
 import DerivacionesPage from "./pages/DerivacionesPage";
 import DiagnosticosPage from "./pages/DiagnosticosPage";
 import AdminPage from "./pages/AdminPage"; 
+import Layout from "./components/Layout";
 
 export default function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/consultas" element={<ConsultasPage />} />
-        <Route path="/pacientes" element={<PacientesPage />} />
-        <Route path="/partos" element={<PartosPage />} />
-        <Route path="/programas" element={<ProgramasPage />} />
-        <Route path="/derivaciones" element={<DerivacionesPage />} />
-        <Route path="/diagnosticos" element={<DiagnosticosPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-
         <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route element={<Layout />}>
+          <Route path="/home" element={<Home />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/consultas" element={<ConsultasPage />} />
+          <Route path="/pacientes" element={<PacientesPage />} />
+          <Route path="/partos" element={<PartosPage />} />
+          <Route path="/programas" element={<ProgramasPage />} />
+          <Route path="/derivaciones" element={<DerivacionesPage />} />
+          <Route path="/diagnosticos" element={<DiagnosticosPage />} />
+        </Route>
+        
       </Routes>
     </Router>
   );
