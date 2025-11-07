@@ -1,26 +1,16 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { Search, Phone, MapPin, Calendar, FileText } from 'lucide-react';
+import { Search, Phone, MapPin, Calendar, FileText, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-
-interface Patient {
-  id_paciente: number;
-  doc_identidad: string;
-  nombres: string;
-  apellidos: string;
-  fecha_nacimiento: string;
-  telefono: string;
-  direccion: string;
-  sucursal: string;
-  estado: string;
-}
+import { type Patient } from '../pages/PacientesPage';
 
 interface Props {
   patients: Patient[];
+  isLoading: boolean;
 }
 
-export function PatientsTable({ patients }: Props) {
+export function PatientsTable({ patients, isLoading }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredPatients = patients.filter(patient => {
@@ -32,9 +22,19 @@ export function PatientsTable({ patients }: Props) {
     );
   });
 
-  const calculateAge = (dateOfBirth: string) => {
+  const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Date => {
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    // Maneja el caso donde el timestamp puede ser nulo o indefinido brevemente
+    if (!timestamp) return new Date(); 
+    return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+  };
+
+  const calculateAge = (dateOfBirth: { seconds: number; nanoseconds: number } | Date) => {
+    const birthDate = toDate(dateOfBirth);
+    if (!birthDate) return 0; // Manejo de error si la fecha es inválida
     const today = new Date();
-    const birthDate = new Date(dateOfBirth);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -43,8 +43,9 @@ export function PatientsTable({ patients }: Props) {
     return age;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateTimestamp: { seconds: number; nanoseconds: number } | Date) => {
+    const date = toDate(dateTimestamp);
+    if (!date) return "Fecha inválida"; // Manejo de error
     return date.toLocaleDateString('es-ES', { 
       year: 'numeric', 
       month: 'long', 
@@ -53,7 +54,7 @@ export function PatientsTable({ patients }: Props) {
   };
 
   const maskDocument = (doc: string) => {
-    if (doc.length <= 4) return doc;
+    if (!doc || doc.length <= 4) return doc || 'N/A';
     return doc.slice(0, 2) + '***' + doc.slice(-2);
   };
 
@@ -85,16 +86,24 @@ export function PatientsTable({ patients }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredPatients.length === 0 ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <Loader2 className="h-8 w-8 mx-auto mb-2 text-pink-500 animate-spin" />
+                  Cargando pacientes...
+                </TableCell>
+              </TableRow>
+            ) : filteredPatients.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                   <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                   No se encontraron pacientes
+                  {searchTerm && " que coincidan con la búsqueda."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredPatients.map((patient) => (
-                <TableRow key={patient.id_paciente} className="hover:bg-pink-50/50">
+                <TableRow key={patient.id} className="hover:bg-pink-50/50">
                   <TableCell className="text-gray-600">
                     {maskDocument(patient.doc_identidad)}
                   </TableCell>
@@ -123,7 +132,7 @@ export function PatientsTable({ patients }: Props) {
                   <TableCell className="text-gray-600">
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3 text-pink-500" />
-                      {patient.sucursal}
+                      {patient.sucursal_nombre}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -142,7 +151,7 @@ export function PatientsTable({ patients }: Props) {
       </div>
 
       {/* Contador de resultados */}
-      {filteredPatients.length > 0 && (
+      {!isLoading && filteredPatients.length > 0 && (
         <p className="text-sm text-gray-600 text-center">
           Mostrando {filteredPatients.length} de {patients.length} pacientes
         </p>
