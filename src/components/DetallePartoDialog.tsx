@@ -1,17 +1,29 @@
+// src/components/DetallePartoDialog.tsx
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { Calendar, MapPin, User, Baby, Activity, Weight, Ruler } from 'lucide-react';
+import { type Parto } from '../types'; // Importamos el tipo real
 
 interface DetallePartoDialogProps {
-  parto: any;
+  parto: Parto; // Usamos el tipo real
   isOpen: boolean;
   onClose: () => void;
 }
 
+// Helper para convertir Timestamps
+const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Date => {
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+};
+
 export function DetallePartoDialog({ parto, isOpen, onClose }: DetallePartoDialogProps) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  
+  const formatDate = (dateTimestamp: { seconds: number; nanoseconds: number } | Date) => {
+    const date = toDate(dateTimestamp); // Usamos el helper
     return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       day: '2-digit',
@@ -23,6 +35,7 @@ export function DetallePartoDialog({ parto, isOpen, onClose }: DetallePartoDialo
   };
 
   const getTipoBadgeVariant = (tipo: string) => {
+    // ... (sin cambios)
     switch (tipo) {
       case 'VAGINAL':
         return 'default';
@@ -34,6 +47,7 @@ export function DetallePartoDialog({ parto, isOpen, onClose }: DetallePartoDialo
   };
 
   const getApgarStatus = (score: number) => {
+    // ... (sin cambios)
     if (score >= 7) return { label: 'Normal', color: 'text-green-600' };
     if (score >= 4) return { label: 'Moderado', color: 'text-orange-600' };
     return { label: 'Bajo', color: 'text-red-600' };
@@ -41,7 +55,7 @@ export function DetallePartoDialog({ parto, isOpen, onClose }: DetallePartoDialo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
           <DialogTitle>Detalles del Parto</DialogTitle>
           <DialogDescription>
@@ -50,7 +64,7 @@ export function DetallePartoDialog({ parto, isOpen, onClose }: DetallePartoDialo
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Información de la Paciente */}
+          {/* Información de la Paciente (con campos corregidos) */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <User className="h-5 w-5 text-primary" />
@@ -59,18 +73,18 @@ export function DetallePartoDialog({ parto, isOpen, onClose }: DetallePartoDialo
             <div className="grid grid-cols-2 gap-4 bg-muted/50 p-4 rounded-lg">
               <div>
                 <p className="text-muted-foreground">Nombre Completo</p>
-                <p>{parto.paciente.nombres} {parto.paciente.apellidos}</p>
+                <p>{parto.paciente_nombres} {parto.paciente_apellidos}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">DNI</p>
-                <p>{parto.paciente.doc_identidad}</p>
+                <p>{parto.paciente_dni}</p>
               </div>
             </div>
           </div>
 
           <Separator />
 
-          {/* Información del Parto */}
+          {/* Información del Parto (con campos corregidos) */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="h-5 w-5 text-primary" />
@@ -101,7 +115,7 @@ export function DetallePartoDialog({ parto, isOpen, onClose }: DetallePartoDialo
 
           <Separator />
 
-          {/* Información del Recién Nacido */}
+          {/* Información del Recién Nacido (sin cambios) */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Baby className="h-5 w-5 text-primary" />

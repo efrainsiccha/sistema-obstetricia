@@ -1,126 +1,83 @@
-import { useState } from 'react';
-import { Plus, Search, Calendar, User, FileText, Filter, ArrowLeft } from 'lucide-react';
+// src/pages/PartosPage.tsx
+
+import { useState, useEffect } from 'react';
+import { Plus, Search, Calendar, User, FileText, Filter, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { RegistrarPartoDialog } from '../components/RegistrarPartoDialog';
 import { DetallePartoDialog } from '../components/DetallePartoDialog';
+import { toast } from 'sonner';
 
-// Datos de ejemplo
-const partosEjemplo = [
-  {
-    id_parto: 1,
-    id_paciente: 1,
-    paciente: { nombres: 'María', apellidos: 'García López', doc_identidad: '12345678' },
-    fecha_parto: '2025-01-15T10:30:00',
-    tipo_parto: 'VAGINAL',
-    lugar: 'Hospital Central - Sala de Partos 2',
-    apgar1: 8,
-    apgar5: 9,
-    observaciones: 'Parto sin complicaciones. Madre e hijo en buen estado.',
-    peso_recien_nacido: 3200,
-    talla_recien_nacido: 50,
-    sexo_recien_nacido: 'F'
-  },
-  {
-    id_parto: 2,
-    id_paciente: 2,
-    paciente: { nombres: 'Ana', apellidos: 'Martínez Silva', doc_identidad: '87654321' },
-    fecha_parto: '2025-01-20T14:15:00',
-    tipo_parto: 'CESAREA',
-    lugar: 'Clínica Santa María - Quirófano 1',
-    apgar1: 7,
-    apgar5: 9,
-    observaciones: 'Cesárea programada por presentación podálica. Procedimiento exitoso.',
-    peso_recien_nacido: 3450,
-    talla_recien_nacido: 52,
-    sexo_recien_nacido: 'M'
-  },
-  {
-    id_parto: 3,
-    id_paciente: 3,
-    paciente: { nombres: 'Carmen', apellidos: 'Rodríguez Torres', doc_identidad: '45678912' },
-    fecha_parto: '2025-02-03T08:45:00',
-    tipo_parto: 'VAGINAL',
-    lugar: 'Hospital Central - Sala de Partos 1',
-    apgar1: 9,
-    apgar5: 10,
-    observaciones: 'Parto natural exitoso. Recién nacido con excelente adaptación.',
-    peso_recien_nacido: 3100,
-    talla_recien_nacido: 49,
-    sexo_recien_nacido: 'F'
-  },
-  {
-    id_parto: 4,
-    id_paciente: 4,
-    paciente: { nombres: 'Lucía', apellidos: 'Fernández Ruiz', doc_identidad: '78912345' },
-    fecha_parto: '2025-02-10T16:20:00',
-    tipo_parto: 'CESAREA',
-    lugar: 'Hospital Central - Quirófano 2',
-    apgar1: 6,
-    apgar5: 8,
-    observaciones: 'Cesárea de emergencia por sufrimiento fetal. Madre y bebé estables.',
-    peso_recien_nacido: 2950,
-    talla_recien_nacido: 48,
-    sexo_recien_nacido: 'M'
-  },
-  {
-    id_parto: 5,
-    id_paciente: 5,
-    paciente: { nombres: 'Isabel', apellidos: 'López Morales', doc_identidad: '32165498' },
-    fecha_parto: '2025-02-14T11:00:00',
-    tipo_parto: 'VAGINAL',
-    lugar: 'Clínica Materno Infantil',
-    apgar1: 8,
-    apgar5: 9,
-    observaciones: 'Parto normal. Alumbramiento completo sin retención placentaria.',
-    peso_recien_nacido: 3350,
-    talla_recien_nacido: 51,
-    sexo_recien_nacido: 'F'
+// Firebase y Tipos
+import { db } from '../lib/firebaseConfig';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { type Parto } from '../types'; // Importamos el tipo desde 'types'
+
+// Helper para convertir Timestamps
+const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Date => {
+  if (timestamp instanceof Date) {
+    return timestamp;
   }
-];
+  return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+};
 
 export function PartosPage() {
   const navigate = useNavigate();
-  const [partos, setPartos] = useState(partosEjemplo);
+  const [partos, setPartos] = useState<Parto[]>([]); // Estado para datos reales
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('TODOS');
-  const [selectedParto, setSelectedParto] = useState<any>(null);
+  const [selectedParto, setSelectedParto] = useState<Parto | null>(null);
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
+
+  // LEER (R) - Cargar partos de Firestore
+  useEffect(() => {
+    setIsLoading(true);
+    // Ordenamos por fecha de parto, el más reciente primero
+    const q = query(collection(db, "partos"), orderBy("fecha_parto", "desc"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const partosList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Parto));
+      setPartos(partosList);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error al cargar partos: ", error);
+      toast.error("Error al cargar los registros de partos.");
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe(); // Limpiar el listener
+  }, []);
 
   // Filtrar partos
   const partosFiltrados = partos.filter(parto => {
     const matchSearch = 
-      parto.paciente.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      parto.paciente.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      parto.paciente.doc_identidad.includes(searchTerm);
+      parto.paciente_nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      parto.paciente_apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      parto.paciente_dni.includes(searchTerm);
     
     const matchTipo = filterTipo === 'TODOS' || parto.tipo_parto === filterTipo;
     
     return matchSearch && matchTipo;
   });
 
-  const handleVerDetalle = (parto: any) => {
+  const handleVerDetalle = (parto: Parto) => {
     setSelectedParto(parto);
     setIsDetalleOpen(true);
   };
 
-  const handleRegistrarParto = (nuevoParto: any) => {
-    const partoConId = {
-      ...nuevoParto,
-      id_parto: partos.length + 1,
-      id_paciente: Math.floor(Math.random() * 1000)
-    };
-    setPartos([partoConId, ...partos]);
-    toast.success('Parto registrado exitosamente');
-  };
+  // 'handleRegistrarParto' ya no es necesario aquí, el Dialog se encarga.
 
   const getTipoBadgeVariant = (tipo: string) => {
+    // ... (sin cambios)
     switch (tipo) {
       case 'VAGINAL':
         return 'default';
@@ -131,8 +88,8 @@ export function PartosPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateTimestamp: { seconds: number; nanoseconds: number } | Date) => {
+    const date = toDate(dateTimestamp); // Usamos el helper
     return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
@@ -142,14 +99,14 @@ export function PartosPage() {
     });
   };
 
-  // Estadísticas
+  // Estadísticas (ahora con datos reales)
   const totalPartos = partos.length;
   const partosVaginales = partos.filter(p => p.tipo_parto === 'VAGINAL').length;
   const partosCesarea = partos.filter(p => p.tipo_parto === 'CESAREA').length;
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      {/* Header */}
+      {/* Header (sin cambios) */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
           <Button
@@ -168,7 +125,7 @@ export function PartosPage() {
         </p>
       </div>
 
-      {/* Estadísticas */}
+      {/* Estadísticas (ahora usan datos reales) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-3">
@@ -190,7 +147,7 @@ export function PartosPage() {
         </Card>
       </div>
 
-      {/* Filtros y acciones */}
+      {/* Filtros y acciones (ahora el dialog es autónomo) */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex gap-4 items-center">
@@ -219,7 +176,8 @@ export function PartosPage() {
               </Select>
             </div>
             <div className="shrink-0">
-              <RegistrarPartoDialog onRegistrar={handleRegistrarParto}>
+              {/* onRegistrar ya no es necesario */}
+              <RegistrarPartoDialog>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Registrar Parto
@@ -254,7 +212,14 @@ export function PartosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {partosFiltrados.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <Loader2 className="h-8 w-8 mx-auto mb-2 text-pink-500 animate-spin" />
+                      Cargando registros...
+                    </TableCell>
+                  </TableRow>
+                ) : partosFiltrados.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No se encontraron partos con los filtros aplicados
@@ -262,17 +227,19 @@ export function PartosPage() {
                   </TableRow>
                 ) : (
                   partosFiltrados.map((parto) => (
-                    <TableRow key={parto.id_parto} className="cursor-pointer hover:bg-muted/50">
+                    <TableRow key={parto.id} className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{parto.paciente.nombres} {parto.paciente.apellidos}</span>
+                          {/* Usamos los campos denormalizados */}
+                          <span>{parto.paciente_nombres} {parto.paciente_apellidos}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{parto.paciente.doc_identidad}</TableCell>
+                      <TableCell>{parto.paciente_dni}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {/* Formateamos el Timestamp */}
                           {formatDate(parto.fecha_parto)}
                         </div>
                       </TableCell>

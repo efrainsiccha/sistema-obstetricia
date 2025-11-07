@@ -1,59 +1,51 @@
+// src/components/RegistrarPartoDialog.tsx
+
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+
+// Firebase
+import { db } from '../lib/firebaseConfig';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
 
 interface RegistrarPartoDialogProps {
   children: React.ReactNode;
-  onRegistrar: (parto: any) => void;
 }
 
-export function RegistrarPartoDialog({ children, onRegistrar }: RegistrarPartoDialogProps) {
+const partoSchema = z.object({
+  paciente_nombres: z.string().min(3, "Nombres requeridos"),
+  paciente_apellidos: z.string().min(3, "Apellidos requeridos"),
+  paciente_dni: z.string().min(8, "DNI debe tener 8 dígitos").max(8, "DNI debe tener 8 dígitos"),
+  fecha_parto: z.string().min(1, "Fecha requerida"),
+  hora_parto: z.string().min(1, "Hora requerida"),
+  tipo_parto: z.enum(["VAGINAL", "CESAREA", "OTRO"]),
+  lugar: z.string().min(3, "Lugar requerido"),
+  apgar1: z.string().min(1, "Requerido"),
+  apgar5: z.string().min(1, "Requerido"),
+  peso_recien_nacido: z.string().min(3, "Peso requerido (g)"),
+  talla_recien_nacido: z.string().min(2, "Talla requerida (cm)"),
+  // CORREGIDO: Eliminado el objeto de error
+  sexo_recien_nacido: z.enum(["M", "F"]), 
+  observaciones: z.string().optional(),
+});
+
+type PartoFormData = z.infer<typeof partoSchema>;
+
+export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    paciente_nombres: '',
-    paciente_apellidos: '',
-    paciente_dni: '',
-    fecha_parto: '',
-    hora_parto: '',
-    tipo_parto: 'VAGINAL',
-    lugar: '',
-    apgar1: '',
-    apgar5: '',
-    peso_recien_nacido: '',
-    talla_recien_nacido: '',
-    sexo_recien_nacido: '',
-    observaciones: ''
-  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const nuevoParto = {
-      paciente: {
-        nombres: formData.paciente_nombres,
-        apellidos: formData.paciente_apellidos,
-        doc_identidad: formData.paciente_dni
-      },
-      fecha_parto: `${formData.fecha_parto}T${formData.hora_parto}:00`,
-      tipo_parto: formData.tipo_parto,
-      lugar: formData.lugar,
-      apgar1: parseInt(formData.apgar1),
-      apgar5: parseInt(formData.apgar5),
-      peso_recien_nacido: parseInt(formData.peso_recien_nacido),
-      talla_recien_nacido: parseInt(formData.talla_recien_nacido),
-      sexo_recien_nacido: formData.sexo_recien_nacido,
-      observaciones: formData.observaciones
-    };
-
-    onRegistrar(nuevoParto);
-    setOpen(false);
-    
-    // Reset form
-    setFormData({
+  const form = useForm<PartoFormData>({
+    resolver: zodResolver(partoSchema),
+    defaultValues: {
       paciente_nombres: '',
       paciente_apellidos: '',
       paciente_dni: '',
@@ -65,13 +57,39 @@ export function RegistrarPartoDialog({ children, onRegistrar }: RegistrarPartoDi
       apgar5: '',
       peso_recien_nacido: '',
       talla_recien_nacido: '',
-      sexo_recien_nacido: '',
+      sexo_recien_nacido: undefined,
       observaciones: ''
-    });
-  };
+    },
+  });
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const onSubmit = async (data: PartoFormData) => {
+    try {
+      const fechaHoraParto = new Date(`${data.fecha_parto}T${data.hora_parto}`);
+      
+      await addDoc(collection(db, "partos"), {
+        paciente_nombres: data.paciente_nombres,
+        paciente_apellidos: data.paciente_apellidos,
+        paciente_dni: data.paciente_dni,
+        fecha_parto: Timestamp.fromDate(fechaHoraParto),
+        tipo_parto: data.tipo_parto,
+        lugar: data.lugar,
+        apgar1: parseInt(data.apgar1, 10),
+        apgar5: parseInt(data.apgar5, 10),
+        peso_recien_nacido: parseInt(data.peso_recien_nacido, 10),
+        talla_recien_nacido: parseInt(data.talla_recien_nacido, 10),
+        sexo_recien_nacido: data.sexo_recien_nacido,
+        observaciones: data.observaciones || '',
+        creado_en: Timestamp.now(),
+      });
+
+      toast.success("Parto registrado exitosamente");
+      setOpen(false);
+      form.reset();
+
+    } catch (error) {
+      console.error("Error registrando parto: ", error);
+      toast.error("Error al registrar el parto.");
+    }
   };
 
   return (
@@ -79,7 +97,7 @@ export function RegistrarPartoDialog({ children, onRegistrar }: RegistrarPartoDi
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
           <DialogTitle>Registrar Nuevo Parto</DialogTitle>
           <DialogDescription>
@@ -87,39 +105,45 @@ export function RegistrarPartoDialog({ children, onRegistrar }: RegistrarPartoDi
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6 py-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
             {/* Información de la Paciente */}
             <div>
               <h3 className="mb-4 text-primary">Información de la Paciente</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="paciente_nombres">Nombres *</Label>
-                  <Input
-                    id="paciente_nombres"
-                    value={formData.paciente_nombres}
-                    onChange={(e) => handleChange('paciente_nombres', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paciente_apellidos">Apellidos *</Label>
-                  <Input
-                    id="paciente_apellidos"
-                    value={formData.paciente_apellidos}
-                    onChange={(e) => handleChange('paciente_apellidos', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paciente_dni">DNI *</Label>
-                  <Input
-                    id="paciente_dni"
-                    value={formData.paciente_dni}
-                    onChange={(e) => handleChange('paciente_dni', e.target.value)}
-                    required
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="paciente_nombres"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nombres *</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="paciente_apellidos"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Apellidos *</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="paciente_dni"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>DNI *</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
@@ -127,145 +151,161 @@ export function RegistrarPartoDialog({ children, onRegistrar }: RegistrarPartoDi
             <div>
               <h3 className="mb-4 text-primary">Información del Parto</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fecha_parto">Fecha del Parto *</Label>
-                  <Input
-                    id="fecha_parto"
-                    type="date"
-                    value={formData.fecha_parto}
-                    onChange={(e) => handleChange('fecha_parto', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hora_parto">Hora del Parto *</Label>
-                  <Input
-                    id="hora_parto"
-                    type="time"
-                    value={formData.hora_parto}
-                    onChange={(e) => handleChange('hora_parto', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipo_parto">Tipo de Parto *</Label>
-                  <Select
-                    value={formData.tipo_parto}
-                    onValueChange={(value) => handleChange('tipo_parto', value)}
-                  >
-                    <SelectTrigger id="tipo_parto">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      <SelectItem value="VAGINAL">Vaginal</SelectItem>
-                      <SelectItem value="CESAREA">Cesárea</SelectItem>
-                      <SelectItem value="OTRO">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lugar">Lugar del Parto *</Label>
-                  <Input
-                    id="lugar"
-                    placeholder="Ej: Hospital Central - Sala 2"
-                    value={formData.lugar}
-                    onChange={(e) => handleChange('lugar', e.target.value)}
-                    required
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="fecha_parto"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha del Parto *</FormLabel>
+                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="hora_parto"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hora del Parto *</FormLabel>
+                      <FormControl><Input type="time" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tipo_parto"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Parto *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="VAGINAL">Vaginal</SelectItem>
+                          <SelectItem value="CESAREA">Cesárea</SelectItem>
+                          <SelectItem value="OTRO">Otro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lugar"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lugar del Parto *</FormLabel>
+                      <FormControl><Input placeholder="Ej: Hospital Central - Sala 2" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
             {/* Información del Recién Nacido */}
             <div>
               <h3 className="mb-4 text-primary">Información del Recién Nacido</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="apgar1">APGAR 1 minuto * (0-10)</Label>
-                  <Input
-                    id="apgar1"
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={formData.apgar1}
-                    onChange={(e) => handleChange('apgar1', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="apgar5">APGAR 5 minutos * (0-10)</Label>
-                  <Input
-                    id="apgar5"
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={formData.apgar5}
-                    onChange={(e) => handleChange('apgar5', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="peso_recien_nacido">Peso (gramos) *</Label>
-                  <Input
-                    id="peso_recien_nacido"
-                    type="number"
-                    placeholder="Ej: 3200"
-                    value={formData.peso_recien_nacido}
-                    onChange={(e) => handleChange('peso_recien_nacido', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="talla_recien_nacido">Talla (cm) *</Label>
-                  <Input
-                    id="talla_recien_nacido"
-                    type="number"
-                    placeholder="Ej: 50"
-                    value={formData.talla_recien_nacido}
-                    onChange={(e) => handleChange('talla_recien_nacido', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sexo_recien_nacido">Sexo *</Label>
-                  <Select
-                    value={formData.sexo_recien_nacido}
-                    onValueChange={(value) => handleChange('sexo_recien_nacido', value)}
-                  >
-                    <SelectTrigger id="sexo_recien_nacido">
-                      <SelectValue placeholder="Seleccionar sexo" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      <SelectItem value="M">Masculino</SelectItem>
-                      <SelectItem value="F">Femenino</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="apgar1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>APGAR 1' * (0-10)</FormLabel>
+                      <FormControl><Input type="number" min="0" max="10" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apgar5"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>APGAR 5' * (0-10)</FormLabel>
+                      <FormControl><Input type="number" min="0" max="10" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="sexo_recien_nacido"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sexo *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar sexo" /></SelectTrigger></FormControl>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="M">Masculino</SelectItem>
+                          <SelectItem value="F">Femenino</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="peso_recien_nacido"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Peso (gramos) *</FormLabel>
+                      <FormControl><Input type="number" placeholder="Ej: 3200" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="talla_recien_nacido"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Talla (cm) *</FormLabel>
+                      <FormControl><Input type="number" placeholder="Ej: 50" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
             {/* Observaciones */}
-            <div className="space-y-2">
-              <Label htmlFor="observaciones">Observaciones</Label>
-              <Textarea
-                id="observaciones"
-                placeholder="Detalles adicionales del parto, complicaciones, etc."
-                rows={4}
-                value={formData.observaciones}
-                onChange={(e) => handleChange('observaciones', e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              Registrar Parto
-            </Button>
-          </DialogFooter>
-        </form>
+            <FormField
+              control={form.control}
+              name="observaciones"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Observaciones</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Detalles adicionales del parto, complicaciones, etc."
+                      rows={4}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Registrar Parto"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
