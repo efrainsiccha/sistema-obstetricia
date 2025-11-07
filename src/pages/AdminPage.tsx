@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 
 // Firebase
 import { app, db } from "../lib/firebaseConfig"; // <-- Importamos 'app'
-import { collection, getDocs, onSnapshot, type QueryDocumentSnapshot, type DocumentData } from "firebase/firestore";
+import { collection, onSnapshot, type QueryDocumentSnapshot, type DocumentData } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions"; // <-- ¡NUEVO!
 
 // Componentes de UI
