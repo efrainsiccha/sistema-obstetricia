@@ -1,14 +1,10 @@
-// src/types/index.ts
-
-// TIPO DE PROGRAMA (CORREGIDO)
 export interface Programa {
-  id: string; // ID de Firestore (string)
+  id: string; 
   nombre: string;
-  descripcion: string | undefined; // <-- ESTA LÍNEA ES LA SOLUCIÓN
+  descripcion: string | undefined; 
   estado: "ACTIVO" | "INACTIVO";
 }
 
-// TIPO DE PACIENTE (Para que esté todo en un solo lugar)
 export interface Patient {
   id: string; 
   doc_identidad: string;
@@ -21,13 +17,13 @@ export interface Patient {
   id_sucursal: string;
   estado: string;
 }
-// TIPO PARA PARTOS
+
 export interface Parto {
-  id: string; // ID del documento de Firestore
+  id: string;
   paciente_nombres: string;
   paciente_apellidos: string;
   paciente_dni: string;
-  fecha_parto: { seconds: number; nanoseconds: number } | Date; // Timestamp de Firestore
+  fecha_parto: { seconds: number; nanoseconds: number } | Date;
   tipo_parto: "VAGINAL" | "CESAREA" | "OTRO";
   lugar: string;
   apgar1: number;

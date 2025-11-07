@@ -1,5 +1,3 @@
-// src/components/DetallePartoDialog.tsx
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';

@@ -1,5 +1,3 @@
-// src/pages/PartosPage.tsx
-
 import { useState, useEffect } from 'react';
 import { Plus, Search, Calendar, User, FileText, Filter, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -73,11 +71,7 @@ export function PartosPage() {
     setSelectedParto(parto);
     setIsDetalleOpen(true);
   };
-
-  // 'handleRegistrarParto' ya no es necesario aquí, el Dialog se encarga.
-
   const getTipoBadgeVariant = (tipo: string) => {
-    // ... (sin cambios)
     switch (tipo) {
       case 'VAGINAL':
         return 'default';
@@ -106,7 +100,6 @@ export function PartosPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      {/* Header (sin cambios) */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
           <Button
@@ -147,7 +140,6 @@ export function PartosPage() {
         </Card>
       </div>
 
-      {/* Filtros y acciones (ahora el dialog es autónomo) */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex gap-4 items-center">
@@ -176,7 +168,6 @@ export function PartosPage() {
               </Select>
             </div>
             <div className="shrink-0">
-              {/* onRegistrar ya no es necesario */}
               <RegistrarPartoDialog>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -188,7 +179,6 @@ export function PartosPage() {
         </CardContent>
       </Card>
 
-      {/* Tabla de partos */}
       <Card>
         <CardHeader>
           <CardTitle>Registro de Partos</CardTitle>
