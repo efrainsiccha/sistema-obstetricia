@@ -1,9 +1,13 @@
+// src/components/PatientsTable.tsx
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { Search, Phone, MapPin, Calendar, FileText, Loader2 } from 'lucide-react';
+import { Search, Phone, MapPin, Calendar, FileText, Loader2, FileEdit } from 'lucide-react'; 
 import { useState } from 'react';
 import { type Patient } from '../pages/PacientesPage';
+import { DeletePatientButton } from './DeletePatientButton';
+import { Button } from './ui/button';
 
 interface Props {
   patients: Patient[];
@@ -26,14 +30,13 @@ export function PatientsTable({ patients, isLoading }: Props) {
     if (timestamp instanceof Date) {
       return timestamp;
     }
-    // Maneja el caso donde el timestamp puede ser nulo o indefinido brevemente
     if (!timestamp) return new Date(); 
     return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
   };
 
   const calculateAge = (dateOfBirth: { seconds: number; nanoseconds: number } | Date) => {
     const birthDate = toDate(dateOfBirth);
-    if (!birthDate) return 0; // Manejo de error si la fecha es inválida
+    if (!birthDate) return 0;
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -45,7 +48,7 @@ export function PatientsTable({ patients, isLoading }: Props) {
 
   const formatDate = (dateTimestamp: { seconds: number; nanoseconds: number } | Date) => {
     const date = toDate(dateTimestamp);
-    if (!date) return "Fecha inválida"; // Manejo de error
+    if (!date) return "Fecha inválida";
     return date.toLocaleDateString('es-ES', { 
       year: 'numeric', 
       month: 'long', 
@@ -54,13 +57,14 @@ export function PatientsTable({ patients, isLoading }: Props) {
   };
 
   const maskDocument = (doc: string) => {
+    // ... (tu lógica de máscara no cambia)
     if (!doc || doc.length <= 4) return doc || 'N/A';
     return doc.slice(0, 2) + '***' + doc.slice(-2);
   };
 
   return (
     <div className="space-y-4">
-      {/* Buscador */}
+      {/* Buscador (Sin cambios) */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
         <Input
@@ -83,19 +87,22 @@ export function PatientsTable({ patients, isLoading }: Props) {
               <TableHead className="text-pink-900">Teléfono</TableHead>
               <TableHead className="text-pink-900">Sucursal</TableHead>
               <TableHead className="text-pink-900">Estado</TableHead>
+              <TableHead className="text-pink-900 text-right">Acciones</TableHead> {/* <-- ¡NUEVO! Columna de Acciones */}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                {/* CORREGIDO: ColSpan a 7 */}
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                   <Loader2 className="h-8 w-8 mx-auto mb-2 text-pink-500 animate-spin" />
                   Cargando pacientes...
                 </TableCell>
               </TableRow>
             ) : filteredPatients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                {/* CORREGIDO: ColSpan a 7 */}
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                   <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                   No se encontraron pacientes
                   {searchTerm && " que coincidan con la búsqueda."}
@@ -143,6 +150,17 @@ export function PatientsTable({ patients, isLoading }: Props) {
                       {patient.estado}
                     </Badge>
                   </TableCell>
+                  
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="icon" className="mr-2" disabled>
+                      <FileEdit className="h-4 w-4" />
+                    </Button>
+                    <DeletePatientButton 
+                      patientId={patient.id} 
+                      patientName={`${patient.nombres} ${patient.apellidos}`} 
+                    />
+                  </TableCell>
+                  
                 </TableRow>
               ))
             )}
@@ -150,7 +168,6 @@ export function PatientsTable({ patients, isLoading }: Props) {
         </Table>
       </div>
 
-      {/* Contador de resultados */}
       {!isLoading && filteredPatients.length > 0 && (
         <p className="text-sm text-gray-600 text-center">
           Mostrando {filteredPatients.length} de {patients.length} pacientes
