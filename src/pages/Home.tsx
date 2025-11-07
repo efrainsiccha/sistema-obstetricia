@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
+import { getAuth, onAuthStateChanged, type User } from "firebase/auth"; // 'User' es el tipo de dato
 import { doc, getDoc } from "firebase/firestore";
 import { app, db } from "../lib/firebaseConfig";
 
@@ -21,8 +21,7 @@ import {
   LogOut,
   AlertCircle,
   ArrowRight,
-  Shield,
-  MapPin
+  Shield
 } from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
 import { ConsultasChart } from "../components/ConsultasChart";
@@ -76,10 +75,9 @@ export default function Home() {
           // Error: El usuario existe en Auth pero no en Firestore
           console.error("Error: No se encontraron datos para el usuario.");
           toast.error("Error al cargar datos del usuario.");
-          navigate("/login"); // Lo sacamos si no tiene datos
+          navigate("/login"); 
         }
       } else {
-        // No hay usuario logueado, lo mandamos al login
         navigate("/login");
       }
       setIsLoading(false);
@@ -436,6 +434,8 @@ export default function Home() {
             </Card>
           </div>
         </div>
+
+        {/* Módulo de Administración (Eliminado de aquí) */}
       </main>
     </div>
   );
