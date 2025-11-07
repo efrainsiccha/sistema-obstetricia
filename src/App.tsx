@@ -7,6 +7,7 @@ import { PartosPage } from "./pages/PartosPage";
 import ProgramasPage from "./pages/ProgramasPage";
 import DerivacionesPage from "./pages/DerivacionesPage";
 import DiagnosticosPage from "./pages/DiagnosticosPage";
+import AdminPage from "./pages/AdminPage"; 
 
 export default function App() {
   return (
@@ -20,6 +21,8 @@ export default function App() {
         <Route path="/programas" element={<ProgramasPage />} />
         <Route path="/derivaciones" element={<DerivacionesPage />} />
         <Route path="/diagnosticos" element={<DiagnosticosPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

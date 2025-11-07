@@ -1,3 +1,9 @@
+import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { app, db } from "../lib/firebaseConfig";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -15,34 +21,99 @@ import {
   LogOut,
   AlertCircle,
   ArrowRight,
+  Shield,
   MapPin
 } from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
 import { ConsultasChart } from "../components/ConsultasChart";
 import { useNavigate } from "react-router-dom";
 
+// Definimos un tipo para nuestros datos de usuario de Firestore
+type UserData = {
+  nombre?: string; // Hacemos 'nombre' y 'sucursal' opcionales
+  rol: "ADMIN" | "OBSTETRA";
+  sucursal?: string;
+  email: string;
+};
+
 export default function Home() {
   const navigate = useNavigate();
-  // Datos mock del usuario actual
-  const currentUser = {
-    name: "Dr. María González",
-    role: "OBSTETRA",
-    sucursal: "Sucursal Centro"
-  };
+  // Estados para guardar los datos REALES del usuario
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Estadísticas mock
+  // Datos mock (los mantendremos para las estadísticas por ahora)
   const stats = {
     pacientesActivos: 124,
     consultasHoy: 8,
     consultasPendientes: 15,
     derivacionesPendientes: 3
   };
-
-  // Alertas mock
   const alerts = [
     { id: 1, type: "ALTA", message: "Derivación urgente - Paciente Ana Torres" },
     { id: 2, type: "MEDIA", message: "3 consultas prenatales programadas hoy" }
   ];
+
+  // Lógica para obtener el usuario real
+  useEffect(() => {
+    const auth = getAuth(app);
+
+    // Esto "escucha" si el usuario está logueado o no
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // 1. Tenemos el usuario de Auth (email, uid)
+        setAuthUser(user);
+        
+        // 2. Buscamos sus datos (rol, nombre) en Firestore
+        const userDocRef = doc(db, "usuarios", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          // 3. Encontramos el documento, lo guardamos en el estado
+          setUserData(userDocSnap.data() as UserData);
+        } else {
+          // Error: El usuario existe en Auth pero no en Firestore
+          console.error("Error: No se encontraron datos para el usuario.");
+          toast.error("Error al cargar datos del usuario.");
+          navigate("/login"); // Lo sacamos si no tiene datos
+        }
+      } else {
+        // No hay usuario logueado, lo mandamos al login
+        navigate("/login");
+      }
+      setIsLoading(false);
+    });
+
+    // Limpiamos el "listener" al salir de la página
+    return () => unsubscribe();
+  }, [navigate]);
+
+  // Función de Logout real
+  const handleLogout = async () => {
+    const auth = getAuth(app);
+    try {
+      await auth.signOut();
+      navigate('/login');
+    } catch (error) {
+      toast.error("Error al cerrar sesión.");
+    }
+  };
+
+  // Mostramos un "Cargando..." mientras traemos los datos
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 flex items-center justify-center">
+        <Activity className="w-10 h-10 text-primary animate-spin" />
+        <p className="ml-4 text-lg text-foreground">Cargando...</p>
+      </div>
+    );
+  }
+
+  // Si ya cargó y no hay datos (por si acaso), no mostramos nada
+  if (!userData || !authUser) {
+    return null; 
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
@@ -56,15 +127,17 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-primary">Sistema de Obstetricia</h1>
-                <p className="text-muted-foreground text-sm">{currentUser.sucursal}</p>
+                {/* Usamos datos reales */}
+                <p className="text-muted-foreground text-sm">{userData.sucursal || "Sucursal no asignada"}</p>
               </div>
             </div>
             
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-foreground">{currentUser.name}</p>
+                {/* Usamos datos reales */}
+                <p className="text-foreground">{userData.nombre || authUser.email}</p>
                 <Badge variant="secondary" className="text-xs">
-                  {currentUser.role}
+                  {userData.rol}
                 </Badge>
               </div>
               <Button variant="ghost" size="icon">
@@ -73,7 +146,21 @@ export default function Home() {
               <Button variant="ghost" size="icon">
                 <Settings className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => navigate('/login')}>
+
+              {/* BOTÓN DE ADMIN AÑADIDO */}
+              {/* Se mostrará SÓLO SI el rol del usuario es "ADMIN" */}
+              {userData.rol === "ADMIN" && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => navigate('/admin')}
+                  title="Panel de Administración"
+                >
+                  <Shield className="w-5 h-5 text-primary" />
+                </Button>
+              )}
+
+              <Button variant="ghost" size="icon" onClick={handleLogout}> {/* Usamos la función de logout real */}
                 <LogOut className="w-5 h-5" />
               </Button>
             </div>
@@ -193,7 +280,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Módulos del Sistema - Simplificado */}
+        {/* Módulos del Sistema */}
         <div>
           <h2 className="text-foreground mb-6">Módulos del Sistema</h2>
           
@@ -349,77 +436,6 @@ export default function Home() {
             </Card>
           </div>
         </div>
-
-        {/* Módulo de Administración (solo para ADMIN) */}
-        {currentUser.role === "ADMIN" && (
-          <div className="mt-8">
-            <h2 className="text-foreground mb-6">Administración del Sistema</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="hover:shadow-xl transition-all border-border/50">
-                <CardHeader>
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="bg-gradient-to-br from-gray-100 to-pink-100 p-4 rounded-2xl">
-                      <Users className="w-7 h-7 text-gray-600" />
-                    </div>
-                    <CardTitle>Usuarios</CardTitle>
-                  </div>
-                  <CardDescription>Gestión de personal del sistema</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
-                    <span className="flex items-center">
-                      <Users className="w-4 h-4 mr-2" />
-                      Administrar
-                    </span>
-                    <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-xl transition-all border-border/50">
-                <CardHeader>
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="bg-gradient-to-br from-gray-100 to-pink-100 p-4 rounded-2xl">
-                      <MapPin className="w-7 h-7 text-gray-600" />
-                    </div>
-                    <CardTitle>Sucursales</CardTitle>
-                  </div>
-                  <CardDescription>Gestión de establecimientos</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
-                    <span className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      Ver Sucursales
-                    </span>
-                    <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-xl transition-all border-border/50">
-                <CardHeader>
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="bg-gradient-to-br from-gray-100 to-pink-100 p-4 rounded-2xl">
-                      <Stethoscope className="w-7 h-7 text-gray-600" />
-                    </div>
-                    <CardTitle>Especialistas</CardTitle>
-                  </div>
-                  <CardDescription>Directorio de especialistas externos</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
-                    <span className="flex items-center">
-                      <Stethoscope className="w-4 h-4 mr-2" />
-                      Ver Directorio
-                    </span>
-                    <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );
