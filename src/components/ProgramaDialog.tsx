@@ -1,33 +1,33 @@
-// src/components/ProgramaDialog.tsx
-
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Textarea } from './ui/textarea'; // Usamos Textarea para descripción
+import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import type { Programa } from '../types';
 import { Loader2 } from 'lucide-react';
 
-// --- Esquema de Validación ---
 const programaSchema = z.object({
   nombre: z.string().min(5, "El nombre es muy corto (mínimo 5 caracteres)"),
-  descripcion: z.string().optional(),
+  descripcion: z.string().optional(), // <-- descripcion es opcional
   estado: z.enum(["ACTIVO", "INACTIVO"]),
 });
 
-type ProgramaFormData = z.infer<typeof programaSchema>;
+// ¡¡CORRECCIÓN 1: EXPORTAMOS este tipo!!
+export type ProgramaFormData = z.infer<typeof programaSchema>;
 
 // --- Props ---
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  programa: Omit<Programa, "id"> | Programa | null; // Omit<...> para 'onSave'
-  onSave: (data: Omit<Programa, "id">) => void;
+  programa: Programa | null; // Usamos 'Programa' (con 'id')
+  
+  // ¡¡CORRECCIÓN 2: Usamos el tipo que acabamos de exportar!!
+  onSave: (data: ProgramaFormData) => void;
 }
 
 export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) {
@@ -41,7 +41,6 @@ export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) 
     },
   });
 
-  // Cargar datos del programa cuando se abre para editar
   useEffect(() => {
     if (programa && open) {
       form.reset({
@@ -50,7 +49,6 @@ export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) 
         estado: programa.estado,
       });
     } else if (!programa && open) {
-      // Limpiar para 'Nuevo Programa'
       form.reset({
         nombre: "",
         descripcion: "",
@@ -59,10 +57,9 @@ export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) 
     }
   }, [programa, open, form]);
 
-  // Handler para el envío
+  // Ahora 'data' y 'onSave' usan EXACTAMENTE el mismo tipo
   const handleSubmit = (data: ProgramaFormData) => {
-    // onSave es la función que viene de ProgramasPage (handleAdd o handleEdit)
-    onSave(data);
+    onSave(data); // <-- El error se fue
   };
 
   return (
@@ -77,7 +74,6 @@ export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             
-            {/* Campo Nombre */}
             <FormField
               control={form.control}
               name="nombre"
@@ -92,7 +88,6 @@ export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) 
               )}
             />
 
-            {/* Campo Descripción */}
             <FormField
               control={form.control}
               name="descripcion"
@@ -111,7 +106,6 @@ export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) 
               )}
             />
 
-            {/* Campo Estado */}
             <FormField
               control={form.control}
               name="estado"

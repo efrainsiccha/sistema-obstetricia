@@ -1,12 +1,10 @@
-// src/pages/ProgramasPage.tsx
-
 import { useState, useEffect } from "react";
 import { ProgramasList } from "../components/ProgramasList";
-import { Heart, ArrowLeft, Loader2 } from "lucide-react"; // Importar Loader2
-import { Toaster, toast } from "sonner"; // Importar toast
+import { Heart, ArrowLeft, Loader2 } from "lucide-react";
+import { Toaster, toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
-import type { Programa } from "../types"; // Importamos el tipo real
+import type { Programa } from "../types";
 
 // Firebase
 import { db } from "../lib/firebaseConfig";
@@ -20,14 +18,17 @@ import {
   Timestamp
 } from "firebase/firestore";
 
+// --- ¡¡ESTA ES LA NUEVA IMPORTACIÓN!! ---
+// Importamos el tipo de dato del formulario que definimos en el Dialog
+import { type ProgramaFormData } from "../components/ProgramaDialog";
+
+
 export default function ProgramasPage() {
   const navigate = useNavigate();
-  
-  // Estado de carga y datos reales
   const [programas, setProgramas] = useState<Programa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // LEER (R) - Cargar programas de Firestore en tiempo real
+  // LEER (R) - Cargar programas
   useEffect(() => {
     setIsLoading(true);
     const programasCollection = collection(db, "programas");
@@ -45,29 +46,30 @@ export default function ProgramasPage() {
       setIsLoading(false);
     });
 
-    return () => unsubscribe(); // Limpiar el listener
+    return () => unsubscribe();
   }, []);
 
-  // CREAR (C) - Función para añadir un programa
-  const handleAddPrograma = async (programa: Omit<Programa, "id">) => {
+  // --- ¡¡FUNCIÓN CORREGIDA!! ---
+  // CREAR (C) - Ahora usa 'ProgramaFormData'
+  const handleAddPrograma = async (programa: ProgramaFormData) => {
     try {
       await addDoc(collection(db, "programas"), {
-        ...programa,
+        ...programa, // 'programa' ya tiene la forma correcta
         creado_en: Timestamp.now()
       });
-      // El 'onSnapshot' se encargará de actualizar la UI
     } catch (error) {
       console.error(error);
       toast.error("Error al crear el programa.");
     }
   };
 
-  // ACTUALIZAR (U) - Función para editar un programa
-  const handleEditPrograma = async (id: string, updatedPrograma: Omit<Programa, "id">) => {
+  // --- ¡¡FUNCIÓN CORREGIDA!! ---
+  // ACTUALIZAR (U) - Ahora usa 'ProgramaFormData'
+  const handleEditPrograma = async (id: string, updatedPrograma: ProgramaFormData) => {
     try {
       const programDocRef = doc(db, "programas", id);
       await updateDoc(programDocRef, {
-        ...updatedPrograma,
+        ...updatedPrograma, // 'updatedPrograma' ya tiene la forma correcta
         actualizado_en: Timestamp.now()
       });
     } catch (error) {
@@ -76,7 +78,7 @@ export default function ProgramasPage() {
     }
   };
 
-  // ACTUALIZAR (U) - Función para cambiar el estado (Activo/Inactivo)
+  // ACTUALIZAR (U) - (Esta función está bien)
   const handleToggleEstado = async (id: string, currentState: "ACTIVO" | "INACTIVO") => {
     try {
       const programDocRef = doc(db, "programas", id);
@@ -90,7 +92,7 @@ export default function ProgramasPage() {
     }
   };
 
-  // ELIMINAR (D) - Función para borrar un programa
+  // ELIMINAR (D) - (Esta función está bien)
   const handleDeletePrograma = async (id: string) => {
     try {
       const programDocRef = doc(db, "programas", id);
@@ -101,7 +103,7 @@ export default function ProgramasPage() {
     }
   };
 
-  // Si está cargando, muestra un spinner
+  // Si está cargando...
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-pink-50 to-purple-50 flex items-center justify-center">
@@ -138,8 +140,9 @@ export default function ProgramasPage() {
         </div>
       </header>
 
-      {/* Main Content (ahora pasa los handlers reales) */}
+      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
         <ProgramasList
           programas={programas}
           onAddPrograma={handleAddPrograma}

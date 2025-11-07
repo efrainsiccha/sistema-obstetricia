@@ -1,20 +1,16 @@
-// src/components/ProgramasList.tsx
-
 import { useState } from "react";
-import type { Programa } from "../types"; // Importamos el tipo real
-import { ProgramaDialog } from "./ProgramaDialog"; // Importamos el nuevo formulario
+import type { Programa } from "../types";
+import { ProgramaDialog, type ProgramaFormData } from "./ProgramaDialog"; 
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { Plus, Pencil, Power, Trash2, ListChecks } from "lucide-react";
 import { toast } from "sonner";
-
-// Definición de las props (ahora usan 'id: string' y funciones async)
 interface ProgramasListProps {
   programas: Programa[];
-  onAddPrograma: (programa: Omit<Programa, "id">) => Promise<void>;
-  onEditPrograma: (id: string, programa: Omit<Programa, "id">) => Promise<void>;
+ onAddPrograma: (programa: ProgramaFormData) => Promise<void>;
+  onEditPrograma: (id: string, programa: ProgramaFormData) => Promise<void>;
   onToggleEstado: (id: string, currentState: "ACTIVO" | "INACTIVO") => Promise<void>;
   onDeletePrograma: (id: string) => Promise<void>;
 }
@@ -29,7 +25,6 @@ export function ProgramasList({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPrograma, setEditingPrograma] = useState<Programa | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  // CORREGIDO: Ahora guardamos el ID (string)
   const [programaToDelete, setProgramaToDelete] = useState<string | null>(null);
 
   const handleAdd = () => {
@@ -42,15 +37,12 @@ export function ProgramasList({
     setDialogOpen(true);
   };
 
-  // CORREGIDO: 'onSave' ahora es async
-  const handleSave = async (programa: Omit<Programa, "id">) => {
+  const handleSave = async (programa: ProgramaFormData) => {
     try {
       if (editingPrograma) {
-        // Llamamos a la función de editar (async)
         await onEditPrograma(editingPrograma.id, programa);
         toast.success("Programa actualizado exitosamente");
       } else {
-        // Llamamos a la función de añadir (async)
         await onAddPrograma(programa);
         toast.success("Programa registrado exitosamente");
       }
@@ -61,7 +53,6 @@ export function ProgramasList({
     }
   };
 
-  // CORREGIDO: 'handleToggle' ahora es async
   const handleToggle = async (id: string, currentEstado: "ACTIVO" | "INACTIVO") => {
     await onToggleEstado(id, currentEstado);
     toast.success(
@@ -71,13 +62,11 @@ export function ProgramasList({
     );
   };
 
-  // CORREGIDO: 'id' ahora es string
   const confirmDelete = (id: string) => {
     setProgramaToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  // CORREGIDO: 'handleDelete' ahora es async
   const handleDelete = async () => {
     if (programaToDelete !== null) {
       await onDeletePrograma(programaToDelete);
@@ -106,8 +95,8 @@ export function ProgramasList({
         </Button>
       </div>
 
-      {/* Tarjetas de estadísticas (sin cambios, ya leen el estado) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Tarjetas de estadísticas (sin cambios) */}
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <Card className="bg-white/80 backdrop-blur border-pink-200">
            <CardHeader className="pb-3">
              <CardTitle className="text-pink-600">Total de Programas</CardTitle>
@@ -145,7 +134,7 @@ export function ProgramasList({
          </Card>
        </div>
 
-      {/* Lista de programas */}
+      {/* Lista de programas (sin cambios) */}
       {programas.length === 0 ? (
         <Card className="bg-white/80 backdrop-blur">
           <CardContent className="py-12">
@@ -170,7 +159,7 @@ export function ProgramasList({
         <div className="grid grid-cols-1 gap-4">
           {programas.map((programa) => (
             <Card 
-              key={programa.id} // CORREGIDO: Usar 'id'
+              key={programa.id}
               className={`bg-white/80 backdrop-blur transition-all hover:shadow-md ${
                 programa.estado === "INACTIVO" ? "opacity-75" : ""
               }`}
@@ -209,7 +198,7 @@ export function ProgramasList({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleToggle(programa.id, programa.estado)} // CORREGIDO: Usar 'id'
+                      onClick={() => handleToggle(programa.id, programa.estado)}
                       className={
                         programa.estado === "ACTIVO"
                           ? "hover:bg-orange-50 hover:border-orange-300"
@@ -227,7 +216,7 @@ export function ProgramasList({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => confirmDelete(programa.id)} // CORREGIDO: Usar 'id'
+                      onClick={() => confirmDelete(programa.id)}
                       className="hover:bg-red-50 hover:border-red-300"
                     >
                       <Trash2 className="size-4 text-red-600" />
@@ -240,12 +229,13 @@ export function ProgramasList({
         </div>
       )}
 
-      {/* Diálogo para crear/editar (ahora usa el nuevo componente) */}
+      {/* ¡¡CORRECCIÓN 3!! */}
+      {/* Ahora 'handleSave' y 'onSave' usan el mismo tipo importado */}
       <ProgramaDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         programa={editingPrograma}
-        onSave={handleSave} // onSave ahora es async
+        onSave={handleSave} 
       />
 
       {/* Diálogo de confirmación para eliminar (sin cambios) */}
@@ -261,7 +251,7 @@ export function ProgramasList({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete} 
+              onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
               Eliminar
