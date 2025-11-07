@@ -7,9 +7,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
 
-import { db } from "../lib/firebaseConfig";
-import { collection, getDocs, type QueryDocumentSnapshot, type DocumentData } from "firebase/firestore";
+// Firebase
+import { app, db } from "../lib/firebaseConfig"; // <-- Importamos 'app'
+import { collection, getDocs, onSnapshot, type QueryDocumentSnapshot, type DocumentData } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions"; // <-- ¡NUEVO!
 
+// Componentes de UI
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -18,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
 import { ArrowLeft, UserPlus, Users } from "lucide-react";
+
+// --- Definición de Tipos ---
 
 const userSchema = z.object({
   nombre: z.string().min(3, "El nombre es requerido"),
@@ -31,13 +36,18 @@ const userSchema = z.object({
 type UserFormData = z.infer<typeof userSchema>;
 
 type FirestoreUser = {
-  id: string; 
+  id: string;
   nombre?: string;
   email: string;
   rol: "ADMIN" | "OBSTETRA";
   estado: "ACTIVO" | "INACTIVO" | "BLOQUEADO";
   sucursal?: string;
 };
+
+// --- Conexión a la Cloud Function ---
+const functions = getFunctions(app); // <-- ¡NUEVO! Inicializa la conexión
+const crearUsuarioCallable = httpsCallable(functions, 'crearUsuario'); // <-- ¡NUEVO! Apunta a nuestra función
+
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -63,49 +73,50 @@ export default function AdminPage() {
 
   // --- Lógica de Datos ---
 
-  // 1. LEER usuarios de Firestore
+  // LEER usuarios (Mejorado con 'onSnapshot' para tiempo real)
   useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true);
-      try {
-        const usersCollectionRef = collection(db, "usuarios");
-        const querySnapshot = await getDocs(usersCollectionRef);
-        
-        const usersList = querySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
-          id: doc.id,
-          ...doc.data(),
-        } as FirestoreUser));
-        
-        setUsuarios(usersList);
-      } catch (error) {
-        toast.error("Error al cargar la lista de usuarios.");
-        console.error("Error fetching users: ", error);
-      }
-      setIsLoading(false);
-    };
+    setIsLoading(true);
+    const usersCollectionRef = collection(db, "usuarios");
 
-    fetchUsers();
+    // 'onSnapshot' escucha cambios en vivo. Si creas un usuario, la tabla se actualiza sola.
+    const unsubscribe = onSnapshot(usersCollectionRef, (querySnapshot) => {
+      const usersList = querySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as FirestoreUser));
+      setUsuarios(usersList);
+      setIsLoading(false);
+    }, (error) => {
+      toast.error("Error al cargar la lista de usuarios.");
+      console.error("Error fetching users: ", error);
+      setIsLoading(false);
+    });
+
+    // Se limpia el "listener" al salir de la página
+    return () => unsubscribe();
   }, []);
 
-  // 2. CREAR usuario (onSubmit)
-  // ¡¡¡IMPORTANTE!!! Esta función sigue siendo una SIMULACIÓN.
-  // Nuestro PRÓXIMO PASO es hacerla real con Cloud Functions.
+  // CREAR usuario (onSubmit) - ¡¡¡AHORA ES REAL!!!
   const onSubmit = async (data: UserFormData) => {
-    console.log("Datos del nuevo usuario:", data);
-    toast("Conectando con el backend...", { icon: "⏳" });
+    toast("Creando usuario...", { icon: "⏳" });
+    try {
+      // 1. Llama a la Cloud Function 'crearUsuario' y le pasa los datos
+      const result = await crearUsuarioCallable(data);
 
-    // ¡¡¡PRÓXIMO PASO!!!
-    // Aquí es donde llamaremos a nuestra Cloud Function de Firebase
-    
-    // Por ahora, solo simulamos un éxito y reseteamos el form
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast.success(`Usuario ${data.nombre} creado (simulación)`);
-    reset(); // Resetea el formulario a los 'defaultValues'
-    
-    // (En el futuro, aquí también recargaremos la lista de usuarios)
+      // 2. La función fue exitosa
+      const resultData = result.data as { status: string, message: string };
+      toast.success(resultData.message || "Usuario creado con éxito.");
+      reset(); // Resetea el formulario
+
+    } catch (error: any) {
+      // 3. La función falló (ej: email ya existe, no eres admin, etc.)
+      console.error(error);
+      toast.error(error.message || "Error desconocido al crear usuario.");
+    }
   };
 
   // --- Renderizado (JSX) ---
+  // (Sin cambios, solo el 'onSubmit' es diferente)
 
   return (
     <div className="space-y-8">
@@ -160,7 +171,7 @@ export default function AdminPage() {
                   <Label htmlFor="rol">Rol del Usuario</Label>
                   <Select
                     onValueChange={(value) => register("rol").onChange({ target: { value } })}
-                    defaultValue="OBSTETRA" // <-- CORREGIDO
+                    defaultValue="OBSTETRA"
                   >
                     <SelectTrigger id="rol" {...register("rol")}>
                       <SelectValue placeholder="Seleccione un rol..." />
@@ -177,7 +188,7 @@ export default function AdminPage() {
                   <Label htmlFor="estado">Estado Inicial</Label>
                   <Select
                     onValueChange={(value) => register("estado").onChange({ target: { value } })}
-                    defaultValue="ACTIVO" // <-- CORREGIDO
+                    defaultValue="ACTIVO"
                   >
                     <SelectTrigger id="estado" {...register("estado")}>
                       <SelectValue placeholder="Seleccione un estado..." />
@@ -192,7 +203,6 @@ export default function AdminPage() {
 
                 <div>
                   <Label htmlFor="sucursal">Sucursal</Label>
-                  {/* TODO: Cambiar esto por un <Select> cuando tengamos la colección de sucursales */}
                   <Input id="sucursal" placeholder="Ej: Sucursal Centro" {...register("sucursal")} />
                   {errors.sucursal && <p className="text-red-600 text-sm mt-1">{errors.sucursal.message}</p>}
                 </div>
@@ -260,7 +270,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
         </div>
-
       </div>
     </div>
   );
