@@ -1,177 +1,154 @@
-import { useState, useEffect } from "react";
-import type { Programa } from "../types";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+// src/components/ProgramaDialog.tsx
 
-interface ProgramaDialogProps {
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea'; // Usamos Textarea para descripción
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import type { Programa } from '../types';
+import { Loader2 } from 'lucide-react';
+
+// --- Esquema de Validación ---
+const programaSchema = z.object({
+  nombre: z.string().min(5, "El nombre es muy corto (mínimo 5 caracteres)"),
+  descripcion: z.string().optional(),
+  estado: z.enum(["ACTIVO", "INACTIVO"]),
+});
+
+type ProgramaFormData = z.infer<typeof programaSchema>;
+
+// --- Props ---
+interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  programa: Programa | null;
-  onSave: (programa: Omit<Programa, "id_programa">) => void;
+  programa: Omit<Programa, "id"> | Programa | null; // Omit<...> para 'onSave'
+  onSave: (data: Omit<Programa, "id">) => void;
 }
 
-export function ProgramaDialog({ open, onOpenChange, programa, onSave }: ProgramaDialogProps) {
-  const [nombre, setNombre] = useState("");
-  const [descripcion, setDescripcion] = useState("");
-  const [estado, setEstado] = useState<"ACTIVO" | "INACTIVO">("ACTIVO");
-  const [errors, setErrors] = useState<{ nombre?: string; descripcion?: string }>({});
+export function ProgramaDialog({ open, onOpenChange, programa, onSave }: Props) {
+  
+  const form = useForm<ProgramaFormData>({
+    resolver: zodResolver(programaSchema),
+    defaultValues: {
+      nombre: "",
+      descripcion: "",
+      estado: "ACTIVO",
+    },
+  });
 
+  // Cargar datos del programa cuando se abre para editar
   useEffect(() => {
-    if (programa) {
-      setNombre(programa.nombre);
-      setDescripcion(programa.descripcion);
-      setEstado(programa.estado);
-    } else {
-      setNombre("");
-      setDescripcion("");
-      setEstado("ACTIVO");
+    if (programa && open) {
+      form.reset({
+        nombre: programa.nombre,
+        descripcion: programa.descripcion || "",
+        estado: programa.estado,
+      });
+    } else if (!programa && open) {
+      // Limpiar para 'Nuevo Programa'
+      form.reset({
+        nombre: "",
+        descripcion: "",
+        estado: "ACTIVO",
+      });
     }
-    setErrors({});
-  }, [programa, open]);
+  }, [programa, open, form]);
 
-  const validateForm = () => {
-    const newErrors: { nombre?: string; descripcion?: string } = {};
-    
-    if (!nombre.trim()) {
-      newErrors.nombre = "El nombre es obligatorio";
-    } else if (nombre.length > 100) {
-      newErrors.nombre = "El nombre no puede exceder 100 caracteres";
-    }
-
-    if (descripcion.length > 300) {
-      newErrors.descripcion = "La descripción no puede exceder 300 caracteres";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    onSave({
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
-      estado
-    });
-  };
-
-  const handleCancel = () => {
-    onOpenChange(false);
-    setErrors({});
+  // Handler para el envío
+  const handleSubmit = (data: ProgramaFormData) => {
+    // onSave es la función que viene de ProgramasPage (handleAdd o handleEdit)
+    onSave(data);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>
-              {programa ? "Editar Programa" : "Nuevo Programa"}
-            </DialogTitle>
-            <DialogDescription>
-              {programa 
-                ? "Modifica la información del programa de atención" 
-                : "Registra un nuevo programa de atención para el centro"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-6">
-            {/* Nombre del programa */}
-            <div className="space-y-2">
-              <Label htmlFor="nombre">
-                Nombre del Programa <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="nombre"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej: Control Prenatal, Psicoprofilaxis..."
-                maxLength={100}
-                className={errors.nombre ? "border-red-500" : ""}
-              />
-              {errors.nombre && (
-                <p className="text-red-500">{errors.nombre}</p>
+      <DialogContent className="bg-white">
+        <DialogHeader>
+          <DialogTitle>
+            {programa ? "Editar Programa" : "Crear Nuevo Programa"}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            
+            {/* Campo Nombre */}
+            <FormField
+              control={form.control}
+              name="nombre"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nombre del Programa</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: Control Prenatal" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              <p className="text-muted-foreground">
-                {nombre.length}/100 caracteres
-              </p>
-            </div>
+            />
 
-            {/* Descripción */}
-            <div className="space-y-2">
-              <Label htmlFor="descripcion">Descripción</Label>
-              <Textarea
-                id="descripcion"
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                placeholder="Describe brevemente el programa y sus beneficios..."
-                rows={4}
-                maxLength={300}
-                className={errors.descripcion ? "border-red-500" : ""}
-              />
-              {errors.descripcion && (
-                <p className="text-red-500">{errors.descripcion}</p>
+            {/* Campo Descripción */}
+            <FormField
+              control={form.control}
+              name="descripcion"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descripción</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Breve descripción del programa..."
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              <p className="text-muted-foreground">
-                {descripcion.length}/300 caracteres
-              </p>
-            </div>
+            />
 
-            {/* Estado */}
-            <div className="space-y-2">
-              <Label htmlFor="estado">
-                Estado <span className="text-red-500">*</span>
-              </Label>
-              <Select value={estado} onValueChange={(value: "ACTIVO" | "INACTIVO") => setEstado(value)}>
-                <SelectTrigger id="estado">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg">
-                  <SelectItem value="ACTIVO">
-                    <div className="flex items-center gap-2">
-                      <div className="size-2 rounded-full bg-green-500"></div>
-                      <span>Activo</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="INACTIVO">
-                    <div className="flex items-center gap-2">
-                      <div className="size-2 rounded-full bg-gray-400"></div>
-                      <span>Inactivo</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-muted-foreground">
-                Solo los programas activos estarán disponibles para inscripción
-              </p>
-            </div>
-          </div>
+            {/* Campo Estado */}
+            <FormField
+              control={form.control}
+              name="estado"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Estado</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione un estado" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ACTIVO">Activo</SelectItem>
+                      <SelectItem value="INACTIVO">Inactivo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-            >
-              {programa ? "Guardar Cambios" : "Crear Programa"}
-            </Button>
-          </DialogFooter>
-        </form>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-pink-600 hover:bg-pink-700" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Guardar"
+                )}
+              </Button>
+            </div>
+            
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

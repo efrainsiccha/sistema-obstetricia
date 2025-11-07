@@ -1,6 +1,8 @@
+// src/components/ProgramasList.tsx
+
 import { useState } from "react";
-import type { Programa } from "../types";
-import { ProgramaDialog } from "./ProgramaDialog";
+import type { Programa } from "../types"; // Importamos el tipo real
+import { ProgramaDialog } from "./ProgramaDialog"; // Importamos el nuevo formulario
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -8,12 +10,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Power, Trash2, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 
+// Definición de las props (ahora usan 'id: string' y funciones async)
 interface ProgramasListProps {
   programas: Programa[];
-  onAddPrograma: (programa: Omit<Programa, "id_programa">) => void;
-  onEditPrograma: (id: number, programa: Omit<Programa, "id_programa">) => void;
-  onToggleEstado: (id: number) => void;
-  onDeletePrograma: (id: number) => void;
+  onAddPrograma: (programa: Omit<Programa, "id">) => Promise<void>;
+  onEditPrograma: (id: string, programa: Omit<Programa, "id">) => Promise<void>;
+  onToggleEstado: (id: string, currentState: "ACTIVO" | "INACTIVO") => Promise<void>;
+  onDeletePrograma: (id: string) => Promise<void>;
 }
 
 export function ProgramasList({
@@ -26,7 +29,8 @@ export function ProgramasList({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPrograma, setEditingPrograma] = useState<Programa | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [programaToDelete, setProgramaToDelete] = useState<number | null>(null);
+  // CORREGIDO: Ahora guardamos el ID (string)
+  const [programaToDelete, setProgramaToDelete] = useState<string | null>(null);
 
   const handleAdd = () => {
     setEditingPrograma(null);
@@ -38,20 +42,28 @@ export function ProgramasList({
     setDialogOpen(true);
   };
 
-  const handleSave = (programa: Omit<Programa, "id_programa">) => {
-    if (editingPrograma) {
-      onEditPrograma(editingPrograma.id_programa, programa);
-      toast.success("Programa actualizado exitosamente");
-    } else {
-      onAddPrograma(programa);
-      toast.success("Programa registrado exitosamente");
+  // CORREGIDO: 'onSave' ahora es async
+  const handleSave = async (programa: Omit<Programa, "id">) => {
+    try {
+      if (editingPrograma) {
+        // Llamamos a la función de editar (async)
+        await onEditPrograma(editingPrograma.id, programa);
+        toast.success("Programa actualizado exitosamente");
+      } else {
+        // Llamamos a la función de añadir (async)
+        await onAddPrograma(programa);
+        toast.success("Programa registrado exitosamente");
+      }
+      setDialogOpen(false);
+      setEditingPrograma(null);
+    } catch (error) {
+      console.error("Error al guardar:", error);
     }
-    setDialogOpen(false);
-    setEditingPrograma(null);
   };
 
-  const handleToggle = (id: number, currentEstado: string) => {
-    onToggleEstado(id);
+  // CORREGIDO: 'handleToggle' ahora es async
+  const handleToggle = async (id: string, currentEstado: "ACTIVO" | "INACTIVO") => {
+    await onToggleEstado(id, currentEstado);
     toast.success(
       currentEstado === "ACTIVO" 
         ? "Programa desactivado" 
@@ -59,14 +71,16 @@ export function ProgramasList({
     );
   };
 
-  const confirmDelete = (id: number) => {
+  // CORREGIDO: 'id' ahora es string
+  const confirmDelete = (id: string) => {
     setProgramaToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const handleDelete = () => {
+  // CORREGIDO: 'handleDelete' ahora es async
+  const handleDelete = async () => {
     if (programaToDelete !== null) {
-      onDeletePrograma(programaToDelete);
+      await onDeletePrograma(programaToDelete);
       toast.success("Programa eliminado exitosamente");
     }
     setDeleteDialogOpen(false);
@@ -78,7 +92,7 @@ export function ProgramasList({
 
   return (
     <div className="space-y-6">
-      {/* Header con estadísticas */}
+      {/* Header con estadísticas (sin cambios) */}
       <div className="flex flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-foreground">Programas de Atención</h2>
@@ -92,44 +106,44 @@ export function ProgramasList({
         </Button>
       </div>
 
-      {/* Tarjetas de estadísticas */}
+      {/* Tarjetas de estadísticas (sin cambios, ya leen el estado) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-white/80 backdrop-blur border-pink-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-pink-600">Total de Programas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-pink-600">{programas.length}</span>
-              <span className="text-muted-foreground">programas</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/80 backdrop-blur border-green-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-green-600">Activos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-green-600">{activeCount}</span>
-              <span className="text-muted-foreground">en servicio</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/80 backdrop-blur border-gray-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-gray-600">Inactivos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-gray-600">{inactiveCount}</span>
-              <span className="text-muted-foreground">suspendidos</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+         <Card className="bg-white/80 backdrop-blur border-pink-200">
+           <CardHeader className="pb-3">
+             <CardTitle className="text-pink-600">Total de Programas</CardTitle>
+           </CardHeader>
+           <CardContent>
+             <div className="flex items-baseline gap-2">
+               <span className="text-pink-600">{programas.length}</span>
+               <span className="text-muted-foreground">programas</span>
+             </div>
+           </CardContent>
+         </Card>
+ 
+         <Card className="bg-white/80 backdrop-blur border-green-200">
+           <CardHeader className="pb-3">
+             <CardTitle className="text-green-600">Activos</CardTitle>
+           </CardHeader>
+           <CardContent>
+             <div className="flex items-baseline gap-2">
+               <span className="text-green-600">{activeCount}</span>
+               <span className="text-muted-foreground">en servicio</span>
+             </div>
+           </CardContent>
+         </Card>
+ 
+         <Card className="bg-white/80 backdrop-blur border-gray-200">
+           <CardHeader className="pb-3">
+             <CardTitle className="text-gray-600">Inactivos</CardTitle>
+           </CardHeader>
+           <CardContent>
+             <div className="flex items-baseline gap-2">
+               <span className="text-gray-600">{inactiveCount}</span>
+               <span className="text-muted-foreground">suspendidos</span>
+             </div>
+           </CardContent>
+         </Card>
+       </div>
 
       {/* Lista de programas */}
       {programas.length === 0 ? (
@@ -156,7 +170,7 @@ export function ProgramasList({
         <div className="grid grid-cols-1 gap-4">
           {programas.map((programa) => (
             <Card 
-              key={programa.id_programa} 
+              key={programa.id} // CORREGIDO: Usar 'id'
               className={`bg-white/80 backdrop-blur transition-all hover:shadow-md ${
                 programa.estado === "INACTIVO" ? "opacity-75" : ""
               }`}
@@ -195,7 +209,7 @@ export function ProgramasList({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleToggle(programa.id_programa, programa.estado)}
+                      onClick={() => handleToggle(programa.id, programa.estado)} // CORREGIDO: Usar 'id'
                       className={
                         programa.estado === "ACTIVO"
                           ? "hover:bg-orange-50 hover:border-orange-300"
@@ -213,7 +227,7 @@ export function ProgramasList({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => confirmDelete(programa.id_programa)}
+                      onClick={() => confirmDelete(programa.id)} // CORREGIDO: Usar 'id'
                       className="hover:bg-red-50 hover:border-red-300"
                     >
                       <Trash2 className="size-4 text-red-600" />
@@ -226,15 +240,15 @@ export function ProgramasList({
         </div>
       )}
 
-      {/* Diálogo para crear/editar */}
+      {/* Diálogo para crear/editar (ahora usa el nuevo componente) */}
       <ProgramaDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         programa={editingPrograma}
-        onSave={handleSave}
+        onSave={handleSave} // onSave ahora es async
       />
 
-      {/* Diálogo de confirmación para eliminar */}
+      {/* Diálogo de confirmación para eliminar (sin cambios) */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -247,7 +261,7 @@ export function ProgramasList({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={handleDelete} 
               className="bg-red-600 hover:bg-red-700"
             >
               Eliminar
