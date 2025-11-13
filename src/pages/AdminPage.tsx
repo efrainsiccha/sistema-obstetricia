@@ -26,7 +26,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
-import { ArrowLeft, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, UserPlus, Users, Baby, ClipboardList, MapPin } from "lucide-react";
+import { StatsCard } from "../components/StatsCard";
 
 // --- Definición de Tipos ---
 
@@ -59,6 +60,10 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState<FirestoreUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [pacientesCount, setPacientesCount] = useState(0);
+  const [partosCount, setPartosCount] = useState(0);
+  const [programasActivosCount, setProgramasActivosCount] = useState(0);
+  const [sucursalesCount, setSucursalesCount] = useState(0);
 
   // 1. Inicializamos el formulario con 'useForm'
   const form = useForm<UserFormData>({
@@ -96,6 +101,38 @@ export default function AdminPage() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "pacientes"), (querySnapshot) => {
+      setPacientesCount(querySnapshot.size);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "partos"), (querySnapshot) => {
+      setPartosCount(querySnapshot.size);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "programas"), (querySnapshot) => {
+      const activos = querySnapshot.docs.reduce((acc, doc) => {
+        const data = doc.data() as { estado?: string };
+        return acc + (data.estado === "ACTIVO" ? 1 : 0);
+      }, 0);
+      setProgramasActivosCount(activos);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "sucursales"), (querySnapshot) => {
+      setSucursalesCount(querySnapshot.size);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // CREAR usuario (onSubmit) - REAL
   const onSubmit = async (data: UserFormData) => {
     toast("Creando usuario...", { icon: "⏳" });
@@ -125,6 +162,35 @@ export default function AdminPage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver al Inicio
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatsCard
+          title="Usuarios"
+          value={usuarios.length}
+          icon={<Users className="w-5 h-5" />}
+          subtitle={`Admins ${usuarios.filter(u => u.rol === "ADMIN").length}, Obstetras ${usuarios.filter(u => u.rol === "OBSTETRA").length}`}
+        />
+        <StatsCard
+          title="Pacientes"
+          value={pacientesCount}
+          icon={<Users className="w-5 h-5" />}
+        />
+        <StatsCard
+          title="Partos"
+          value={partosCount}
+          icon={<Baby className="w-5 h-5" />}
+        />
+        <StatsCard
+          title="Programas Activos"
+          value={programasActivosCount}
+          icon={<ClipboardList className="w-5 h-5" />}
+        />
+        <StatsCard
+          title="Sucursales"
+          value={sucursalesCount}
+          icon={<MapPin className="w-5 h-5" />}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
