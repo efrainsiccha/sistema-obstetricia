@@ -372,7 +372,7 @@ export function ConsultasPage() {
                 placeholder="Nombre o DNI del paciente"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 border-gray-200 h-10 bg-white"
+                className="pl-10 pr-4 h-10 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 style={{ paddingLeft: '2.5rem' }}
               />
             </div>
@@ -380,7 +380,7 @@ export function ConsultasPage() {
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Tipo</span>
             <Select value={tipoFilter} onValueChange={setTipoFilter}>
-              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Todos los tipos" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -394,7 +394,7 @@ export function ConsultasPage() {
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Estado</span>
             <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -408,7 +408,7 @@ export function ConsultasPage() {
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Obstetra</span>
             <Select value={obstetraFilter} onValueChange={setObstetraFilter}>
-              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Todos los obstetras" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -422,7 +422,7 @@ export function ConsultasPage() {
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-600">Ámbito de búsqueda</span>
             <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Pestaña actual" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
