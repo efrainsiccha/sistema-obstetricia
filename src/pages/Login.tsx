@@ -18,7 +18,8 @@ import {
 // Importa las funciones de Firebase Auth
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 // Importa tu app de Firebase (la que lee las variables .env)
-import { app } from "../lib/firebaseConfig";
+import { app, db } from "../lib/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 
 // PASO 1: Cambiamos 'username' por 'email' y validamos que sea un email
 const schema = z.object({
@@ -110,12 +111,27 @@ export default function Login() {
       // Usamos data.email y data.password
       await signInWithEmailAndPassword(auth, data.email, data.password);
 
-      // Login exitoso
       toast.success("¡Bienvenido al sistema!");
-      resetAttempts(); // Reseteamos contador de intentos
+      resetAttempts();
       setAttemptsLeft(getAttemptsLeft());
       setHasFailedAttempts(false);
-      navigate("/home"); // Navegamos al Home
+
+      const user = auth.currentUser;
+      if (user) {
+        const userDocSnap = await getDoc(doc(db, "usuarios", user.uid));
+        if (userDocSnap.exists()) {
+          const info = userDocSnap.data() as { rol?: string };
+          if (info.rol === "ADMIN") {
+            navigate("/admin");
+          } else {
+            navigate("/home");
+          }
+        } else {
+          navigate("/home");
+        }
+      } else {
+        navigate("/home");
+      }
     } catch (error: any) {
       // Manejo de errores de Firebase
       const left = decAttempt();
