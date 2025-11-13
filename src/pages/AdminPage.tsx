@@ -238,6 +238,9 @@ export default function AdminPage() {
           value={partosCount}
           icon={<Baby className="w-5 h-5" />}
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
         <StatsCard
           title="Programas Activos"
           value={programasActivosCount}
@@ -248,12 +251,17 @@ export default function AdminPage() {
           value={sucursalesCount}
           icon={<MapPin className="w-5 h-5" />}
         />
+        <StatsCard
+          title="Programas Inactivos"
+          value={programasInactivosCount}
+          icon={<ClipboardList className="w-5 h-5" />}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatsCard title="Pacientes Activos" value={pacientesActivosCount} icon={<Users className="w-5 h-5" />} trend={`${pacientesActivosCount}/${pacientesCount}`} />
         <StatsCard title="Pacientes Inactivos" value={pacientesInactivosCount} icon={<Users className="w-5 h-5" />} trend={`${pacientesInactivosCount}/${pacientesCount}`} />
-        <StatsCard title="Programas Inactivos" value={programasInactivosCount} icon={<ClipboardList className="w-5 h-5" />} />
+        <StatsCard title="Top Sucursal" value={pacientesPorSucursal[0]?.count || 0} icon={<MapPin className="w-5 h-5" />} subtitle={pacientesPorSucursal[0]?.nombre || "Sin datos"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
