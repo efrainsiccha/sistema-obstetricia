@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, Calendar, FileText, ArrowLeft } from "lucide-react";
+import { Plus, Calendar, FileText, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
+ 
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
@@ -174,7 +174,6 @@ const consultasMock: Consulta[] = [
 export function ConsultasPage() {
   const navigate = useNavigate();
   const [consultas] = useState<Consulta[]>(consultasMock);
-  const [searchTerm, setSearchTerm] = useState("");
   const [tipoFilter, setTipoFilter] = useState<string>("TODOS");
   const [estadoFilter, setEstadoFilter] = useState<string>("TODOS");
   const [obstetraFilter, setObstetraFilter] = useState<string>("TODOS");
@@ -201,19 +200,14 @@ export function ConsultasPage() {
 
   const consultasFiltradas = useMemo(() => {
     return consultas.filter(consulta => {
-      const matchSearch = searchTerm === "" || 
-        consulta.paciente.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        consulta.paciente.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        consulta.paciente.doc_identidad.includes(searchTerm);
-      
       const matchTipo = tipoFilter === "TODOS" || consulta.tipo === tipoFilter;
       const matchEstado = estadoFilter === "TODOS" || consulta.estado === estadoFilter;
       const matchObstetra = obstetraFilter === "TODOS" || consulta.obstetra.username === obstetraFilter;
       const matchPaciente = pacienteFilter === "TODOS" || consulta.paciente.doc_identidad === pacienteFilter;
 
-      return matchSearch && matchTipo && matchEstado && matchObstetra && matchPaciente;
+      return matchTipo && matchEstado && matchObstetra && matchPaciente;
     });
-  }, [consultas, searchTerm, tipoFilter, estadoFilter, obstetraFilter, pacienteFilter]);
+  }, [consultas, tipoFilter, estadoFilter, obstetraFilter, pacienteFilter]);
 
   // Agrupar por estado
   const consultasProgramadas = consultasFiltradas.filter(c => c.estado === "PROGRAMADA");
@@ -319,7 +313,7 @@ export function ConsultasPage() {
 
           {/* Stats Cards - More compact and horizontal */}
           <div className="grid grid-cols-4 gap-4 mt-4">
-            <Card className="border-0 shadow-sm">
+            <Card className="border-0 shadow-none bg-transparent">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -330,7 +324,7 @@ export function ConsultasPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-sm">
+            <Card className="border-0 shadow-none bg-transparent">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -343,7 +337,7 @@ export function ConsultasPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-sm">
+            <Card className="border-0 shadow-none bg-transparent">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -356,7 +350,7 @@ export function ConsultasPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-sm">
+            <Card className="border-0 shadow-none bg-transparent">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -372,67 +366,67 @@ export function ConsultasPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 mb-4 bg-white p-4 rounded-lg shadow-sm border-0">
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
-              <Input
-                placeholder="Buscar por nombre o DNI del paciente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 border-gray-200 h-10 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                style={{ paddingLeft: '2.5rem' }}
-              />
-            </div>
+        <div className="flex items-center gap-4 mb-4 p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Tipo:</span>
+            <Select value={tipoFilter} onValueChange={setTipoFilter}>
+              <SelectTrigger className="w-48 border-gray-200 bg-white h-10">
+                <SelectValue placeholder="Todos los tipos" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                <SelectItem value="TODOS">Todos los tipos</SelectItem>
+                <SelectItem value="PRENATAL">Prenatal</SelectItem>
+                <SelectItem value="POSTPARTO">Postparto</SelectItem>
+                <SelectItem value="PARTO">Parto</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={tipoFilter} onValueChange={setTipoFilter}>
-            <SelectTrigger className="w-48 border-gray-200 bg-white h-10">
-              <SelectValue placeholder="Todos los tipos" />
-            </SelectTrigger>
-            <SelectContent className="bg-white border border-gray-200 shadow-lg">
-              <SelectItem value="TODOS">Todos los tipos</SelectItem>
-              <SelectItem value="PRENATAL">Prenatal</SelectItem>
-              <SelectItem value="POSTPARTO">Postparto</SelectItem>
-              <SelectItem value="PARTO">Parto</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-            <SelectTrigger className="w-48 border-gray-200 bg-white h-10">
-              <SelectValue placeholder="Todos los estados" />
-            </SelectTrigger>
-            <SelectContent className="bg-white border border-gray-200 shadow-lg">
-              <SelectItem value="TODOS">Todos los estados</SelectItem>
-              <SelectItem value="PROGRAMADA">Programada</SelectItem>
-              <SelectItem value="ATENDIDA">Atendida</SelectItem>
-              <SelectItem value="CANCELADA">Cancelada</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={obstetraFilter} onValueChange={setObstetraFilter}>
-            <SelectTrigger className="w-56 border-gray-200 bg-white h-10">
-              <SelectValue placeholder="Todos los obstetras" />
-            </SelectTrigger>
-            <SelectContent className="bg-white border border-gray-200 shadow-lg">
-              <SelectItem value="TODOS">Todos los obstetras</SelectItem>
-              {uniqueObstetras.map(name => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={pacienteFilter} onValueChange={setPacienteFilter}>
-            <SelectTrigger className="w-64 border-gray-200 bg-white h-10">
-              <SelectValue placeholder="Todos los pacientes" />
-            </SelectTrigger>
-            <SelectContent className="bg-white border border-gray-200 shadow-lg">
-              <SelectItem value="TODOS">Todos los pacientes</SelectItem>
-              {uniquePacientes.map(p => (
-                <SelectItem key={p.dni} value={p.dni}>{p.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Estado:</span>
+            <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+              <SelectTrigger className="w-48 border-gray-200 bg-white h-10">
+                <SelectValue placeholder="Todos los estados" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                <SelectItem value="TODOS">Todos los estados</SelectItem>
+                <SelectItem value="PROGRAMADA">Programada</SelectItem>
+                <SelectItem value="ATENDIDA">Atendida</SelectItem>
+                <SelectItem value="CANCELADA">Cancelada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Obstetra:</span>
+            <Select value={obstetraFilter} onValueChange={setObstetraFilter}>
+              <SelectTrigger className="w-56 border-gray-200 bg-white h-10">
+                <SelectValue placeholder="Todos los obstetras" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                <SelectItem value="TODOS">Todos los obstetras</SelectItem>
+                {uniqueObstetras.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Paciente:</span>
+            <Select value={pacienteFilter} onValueChange={setPacienteFilter}>
+              <SelectTrigger className="w-64 border-gray-200 bg-white h-10">
+                <SelectValue placeholder="Todos los pacientes" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                <SelectItem value="TODOS">Todos los pacientes</SelectItem>
+                {uniquePacientes.map(p => (
+                  <SelectItem key={p.dni} value={p.dni}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Tabs defaultValue="todas" className="space-y-3">
-          <TabsList className="bg-white border border-gray-200">
+          <TabsList className="bg-transparent">
             <TabsTrigger value="todas" className="text-sm">
               Todas ({consultasFiltradas.length})
             </TabsTrigger>
@@ -442,9 +436,6 @@ export function ConsultasPage() {
             <TabsTrigger value="atendidas" className="text-sm">
               Atendidas ({consultasAtendidas.length})
             </TabsTrigger>
-            <TabsTrigger value="historial" className="text-sm">
-              Historial Clínico ({consultasAtendidas.length})
-            </TabsTrigger>
             <TabsTrigger value="controles" className="text-sm">
               Controles ({consultasFiltradas.filter(c => c.tipo === "PRENATAL").length})
             </TabsTrigger>
@@ -453,7 +444,7 @@ export function ConsultasPage() {
           <TabsContent value="todas" className="mt-3">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-0">
-                <div className="bg-white rounded-lg overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
@@ -485,7 +476,7 @@ export function ConsultasPage() {
           <TabsContent value="programadas" className="mt-3">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-0">
-                <div className="bg-white rounded-lg overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
@@ -517,7 +508,7 @@ export function ConsultasPage() {
           <TabsContent value="atendidas" className="mt-3">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-0">
-                <div className="bg-white rounded-lg overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
@@ -545,42 +536,11 @@ export function ConsultasPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="historial" className="mt-3">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-0">
-                <div className="bg-white rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-gray-50">
-                      <TableRow>
-                        <TableHead className="font-semibold text-gray-700">Paciente</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Fecha y Hora</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Obstetra</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Estado</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {consultasAtendidas.length > 0 ? (
-                        consultasAtendidas.map(renderConsultaRow)
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                            No hay historial clínico
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="controles" className="mt-3">
-            <Card className="border-0 shadow-sm">
+            <Card className="border-0 shadow-none bg-transparent">
               <CardContent className="p-0">
-                <div className="bg-white rounded-lg overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
