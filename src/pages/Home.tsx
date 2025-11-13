@@ -102,7 +102,7 @@ export default function Home() {
         <div className="space-y-4">
           <h3 className="text-foreground">Acciones Rápidas</h3>
           
-          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-primary to-pink-400 hover:from-primary/90 hover:to-pink-400/90 shadow-lg">
+          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-primary to-pink-400 hover:from-primary/90 hover:to-pink-400/90 shadow-lg" onClick={() => navigate('/pacientes')}>
             <UserPlus className="w-5 h-5 mr-3" />
             <div className="text-left flex-1">
               <div>Registrar Paciente</div>
@@ -111,7 +111,7 @@ export default function Home() {
             <ArrowRight className="w-4 h-4" />
           </Button>
 
-          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-500/90 hover:to-pink-500/90 shadow-lg">
+          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-500/90 hover:to-pink-500/90 shadow-lg" onClick={() => navigate('/consultas')}>
             <Calendar className="w-5 h-5 mr-3" />
             <div className="text-left flex-1">
               <div>Nueva Consulta</div>
@@ -120,7 +120,7 @@ export default function Home() {
             <ArrowRight className="w-4 h-4" />
           </Button>
 
-          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-pink-600 to-pink-400 hover:from-pink-600/90 hover:to-pink-400/90 shadow-lg">
+          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-pink-600 to-pink-400 hover:from-pink-600/90 hover:to-pink-400/90 shadow-lg" onClick={() => navigate('/partos')}>
             <Baby className="w-5 h-5 mr-3" />
             <div className="text-left flex-1">
               <div>Registrar Parto</div>
@@ -129,7 +129,7 @@ export default function Home() {
             <ArrowRight className="w-4 h-4" />
           </Button>
 
-          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-orange-400 to-pink-400 hover:from-orange-400/90 hover:to-pink-400/90 shadow-lg">
+          <Button className="w-full justify-start h-auto py-4 bg-gradient-to-r from-orange-400 to-pink-400 hover:from-orange-400/90 hover:to-pink-400/90 shadow-lg" onClick={() => navigate('/derivaciones')}>
             <Stethoscope className="w-5 h-5 mr-3" />
             <div className="text-left flex-1">
               <div>Nueva Derivación</div>
