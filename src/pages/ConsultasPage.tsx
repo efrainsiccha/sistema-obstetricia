@@ -177,11 +177,28 @@ export function ConsultasPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [tipoFilter, setTipoFilter] = useState<string>("TODOS");
   const [estadoFilter, setEstadoFilter] = useState<string>("TODOS");
+  const [obstetraFilter, setObstetraFilter] = useState<string>("TODOS");
+  const [pacienteFilter, setPacienteFilter] = useState<string>("TODOS");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedConsulta, setSelectedConsulta] = useState<Consulta | null>(null);
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
 
   // Filtrar consultas
+  const uniqueObstetras = useMemo(() => {
+    const setNames = new Set<string>();
+    consultas.forEach(c => setNames.add(c.obstetra.username));
+    return Array.from(setNames).sort();
+  }, [consultas]);
+
+  const uniquePacientes = useMemo(() => {
+    const map = new Map<string, string>();
+    consultas.forEach(c => {
+      const label = `${c.paciente.nombres} ${c.paciente.apellidos} - ${c.paciente.doc_identidad}`;
+      map.set(c.paciente.doc_identidad, label);
+    });
+    return Array.from(map.entries()).map(([dni, label]) => ({ dni, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [consultas]);
+
   const consultasFiltradas = useMemo(() => {
     return consultas.filter(consulta => {
       const matchSearch = searchTerm === "" || 
@@ -191,10 +208,12 @@ export function ConsultasPage() {
       
       const matchTipo = tipoFilter === "TODOS" || consulta.tipo === tipoFilter;
       const matchEstado = estadoFilter === "TODOS" || consulta.estado === estadoFilter;
+      const matchObstetra = obstetraFilter === "TODOS" || consulta.obstetra.username === obstetraFilter;
+      const matchPaciente = pacienteFilter === "TODOS" || consulta.paciente.doc_identidad === pacienteFilter;
 
-      return matchSearch && matchTipo && matchEstado;
+      return matchSearch && matchTipo && matchEstado && matchObstetra && matchPaciente;
     });
-  }, [consultas, searchTerm, tipoFilter, estadoFilter]);
+  }, [consultas, searchTerm, tipoFilter, estadoFilter, obstetraFilter, pacienteFilter]);
 
   // Agrupar por estado
   const consultasProgramadas = consultasFiltradas.filter(c => c.estado === "PROGRAMADA");
@@ -353,7 +372,6 @@ export function ConsultasPage() {
           </div>
         </div>
 
-        {/* Filters - Compact horizontal layout */}
         <div className="flex items-center gap-4 mb-4 bg-white p-4 rounded-lg shadow-sm border-0">
           <div className="flex-1 max-w-md">
             <div className="relative">
@@ -389,9 +407,30 @@ export function ConsultasPage() {
               <SelectItem value="CANCELADA">Cancelada</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={obstetraFilter} onValueChange={setObstetraFilter}>
+            <SelectTrigger className="w-56 border-gray-200 bg-white h-10">
+              <SelectValue placeholder="Todos los obstetras" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg">
+              <SelectItem value="TODOS">Todos los obstetras</SelectItem>
+              {uniqueObstetras.map(name => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={pacienteFilter} onValueChange={setPacienteFilter}>
+            <SelectTrigger className="w-64 border-gray-200 bg-white h-10">
+              <SelectValue placeholder="Todos los pacientes" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg">
+              <SelectItem value="TODOS">Todos los pacientes</SelectItem>
+              {uniquePacientes.map(p => (
+                <SelectItem key={p.dni} value={p.dni}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Consultas Tabs - Compact layout */}
         <Tabs defaultValue="todas" className="space-y-3">
           <TabsList className="bg-white border border-gray-200">
             <TabsTrigger value="todas" className="text-sm">
@@ -402,6 +441,12 @@ export function ConsultasPage() {
             </TabsTrigger>
             <TabsTrigger value="atendidas" className="text-sm">
               Atendidas ({consultasAtendidas.length})
+            </TabsTrigger>
+            <TabsTrigger value="historial" className="text-sm">
+              Historial Clínico ({consultasAtendidas.length})
+            </TabsTrigger>
+            <TabsTrigger value="controles" className="text-sm">
+              Controles ({consultasFiltradas.filter(c => c.tipo === "PRENATAL").length})
             </TabsTrigger>
           </TabsList>
 
@@ -501,6 +546,69 @@ export function ConsultasPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        <TabsContent value="historial" className="mt-3">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-0">
+              <div className="bg-white rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-gray-50">
+                    <TableRow>
+                      <TableHead className="font-semibold text-gray-700">Paciente</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Fecha y Hora</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Obstetra</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {consultasAtendidas.length > 0 ? (
+                      consultasAtendidas.map(renderConsultaRow)
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                          No hay historial clínico
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="controles" className="mt-3">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-0">
+              <div className="bg-white rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-gray-50">
+                    <TableRow>
+                      <TableHead className="font-semibold text-gray-700">Paciente</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Fecha y Hora</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Obstetra</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {consultasFiltradas.filter(c => c.tipo === "PRENATAL").length > 0 ? (
+                      consultasFiltradas.filter(c => c.tipo === "PRENATAL").map(renderConsultaRow)
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                          No hay controles prenatales
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </div>
 
       {/* Dialogs */}
