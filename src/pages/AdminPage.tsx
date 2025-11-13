@@ -28,6 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../components/ui/badge";
 import { ArrowLeft, UserPlus, Users, Baby, ClipboardList, MapPin } from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 // --- Definición de Tipos ---
 
@@ -64,6 +65,14 @@ export default function AdminPage() {
   const [partosCount, setPartosCount] = useState(0);
   const [programasActivosCount, setProgramasActivosCount] = useState(0);
   const [sucursalesCount, setSucursalesCount] = useState(0);
+  const [pacientesActivosCount, setPacientesActivosCount] = useState(0);
+  const [pacientesInactivosCount, setPacientesInactivosCount] = useState(0);
+  const [partosVaginalesCount, setPartosVaginalesCount] = useState(0);
+  const [partosCesareaCount, setPartosCesareaCount] = useState(0);
+  const [partosOtroCount, setPartosOtroCount] = useState(0);
+  const [programasInactivosCount, setProgramasInactivosCount] = useState(0);
+  const [partosUltimos7DiasData, setPartosUltimos7DiasData] = useState<{ dia: string; total: number }[]>([]);
+  const [pacientesPorSucursal, setPacientesPorSucursal] = useState<{ nombre: string; count: number }[]>([]);
 
   // 1. Inicializamos el formulario con 'useForm'
   const form = useForm<UserFormData>({
@@ -103,25 +112,73 @@ export default function AdminPage() {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "pacientes"), (querySnapshot) => {
-      setPacientesCount(querySnapshot.size);
+      const total = querySnapshot.size;
+      let activos = 0;
+      let inactivos = 0;
+      const sucMap = new Map<string, number>();
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as { estado?: string; sucursal_nombre?: string };
+        if (data.estado === "ACTIVO") activos += 1; else inactivos += 1;
+        const nombre = data.sucursal_nombre || "Sin sucursal";
+        sucMap.set(nombre, (sucMap.get(nombre) || 0) + 1);
+      });
+      setPacientesCount(total);
+      setPacientesActivosCount(activos);
+      setPacientesInactivosCount(inactivos);
+      const arr = Array.from(sucMap.entries()).map(([nombre, count]) => ({ nombre, count }))
+        .sort((a, b) => b.count - a.count).slice(0, 5);
+      setPacientesPorSucursal(arr);
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "partos"), (querySnapshot) => {
-      setPartosCount(querySnapshot.size);
+      const total = querySnapshot.size;
+      let vag = 0;
+      let ces = 0;
+      let otro = 0;
+      const byDay = new Map<string, number>();
+      const now = new Date();
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as { tipo_parto?: string; fecha_parto?: any };
+        if (data.tipo_parto === "VAGINAL") vag += 1; else if (data.tipo_parto === "CESAREA") ces += 1; else otro += 1;
+        const ts = data.fecha_parto;
+        let d: Date;
+        if (ts && typeof ts === "object" && ts.seconds !== undefined) {
+          d = new Date(ts.seconds * 1000 + ts.nanoseconds / 1000000);
+        } else {
+          d = ts ? new Date(ts) : new Date();
+        }
+        const key = d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+        byDay.set(key, (byDay.get(key) || 0) + 1);
+      });
+      setPartosCount(total);
+      setPartosVaginalesCount(vag);
+      setPartosCesareaCount(ces);
+      setPartosOtroCount(otro);
+      const days: { dia: string; total: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        const key = d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+        days.push({ dia: key, total: byDay.get(key) || 0 });
+      }
+      setPartosUltimos7DiasData(days);
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "programas"), (querySnapshot) => {
-      const activos = querySnapshot.docs.reduce((acc, doc) => {
+      let activos = 0;
+      let inactivos = 0;
+      querySnapshot.forEach((doc) => {
         const data = doc.data() as { estado?: string };
-        return acc + (data.estado === "ACTIVO" ? 1 : 0);
-      }, 0);
+        if (data.estado === "ACTIVO") activos += 1; else if (data.estado === "INACTIVO") inactivos += 1;
+      });
       setProgramasActivosCount(activos);
+      setProgramasInactivosCount(inactivos);
     });
     return () => unsubscribe();
   }, []);
@@ -192,6 +249,79 @@ export default function AdminPage() {
           icon={<MapPin className="w-5 h-5" />}
         />
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatsCard title="Pacientes Activos" value={pacientesActivosCount} icon={<Users className="w-5 h-5" />} trend={`${pacientesActivosCount}/${pacientesCount}`} />
+        <StatsCard title="Pacientes Inactivos" value={pacientesInactivosCount} icon={<Users className="w-5 h-5" />} trend={`${pacientesInactivosCount}/${pacientesCount}`} />
+        <StatsCard title="Programas Inactivos" value={programasInactivosCount} icon={<ClipboardList className="w-5 h-5" />} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-2 shadow-lg border-border/50">
+          <CardHeader>
+            <CardTitle>Partos últimos 7 días</CardTitle>
+            <CardDescription>Distribución diaria</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div style={{ width: "100%", height: 280 }}>
+              <ResponsiveContainer>
+                <BarChart data={partosUltimos7DiasData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="dia" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="total" fill="#d4588f" radius={[8,8,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg border-border/50">
+          <CardHeader>
+            <CardTitle>Partos por tipo</CardTitle>
+            <CardDescription>Vaginal, Cesárea y Otros</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between"><span>Vaginal</span><span>{partosVaginalesCount}</span></div>
+              <div className="flex items-center justify-between"><span>Cesárea</span><span>{partosCesareaCount}</span></div>
+              <div className="flex items-center justify-between"><span>Otro</span><span>{partosOtroCount}</span></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="shadow-lg border-border/50">
+        <CardHeader>
+          <CardTitle>Pacientes por sucursal</CardTitle>
+          <CardDescription>Top 5</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Sucursal</TableHead>
+                <TableHead>Total Pacientes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pacientesPorSucursal.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center">Sin datos</TableCell>
+                </TableRow>
+              ) : (
+                pacientesPorSucursal.map((s) => (
+                  <TableRow key={s.nombre}>
+                    <TableCell>{s.nombre}</TableCell>
+                    <TableCell>{s.count}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
