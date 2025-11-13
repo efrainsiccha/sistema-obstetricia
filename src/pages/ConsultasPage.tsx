@@ -545,70 +545,70 @@ export function ConsultasPage() {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
-        <TabsContent value="historial" className="mt-3">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-0">
-              <div className="bg-white rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-gray-50">
-                    <TableRow>
-                      <TableHead className="font-semibold text-gray-700">Paciente</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Fecha y Hora</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Obstetra</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {consultasAtendidas.length > 0 ? (
-                      consultasAtendidas.map(renderConsultaRow)
-                    ) : (
+          <TabsContent value="historial" className="mt-3">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-0">
+                <div className="bg-white rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                          No hay historial clínico
-                        </TableCell>
+                        <TableHead className="font-semibold text-gray-700">Paciente</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Fecha y Hora</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Obstetra</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Estado</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </TableHeader>
+                    <TableBody>
+                      {consultasAtendidas.length > 0 ? (
+                        consultasAtendidas.map(renderConsultaRow)
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                            No hay historial clínico
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="controles" className="mt-3">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-0">
-              <div className="bg-white rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-gray-50">
-                    <TableRow>
-                      <TableHead className="font-semibold text-gray-700">Paciente</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Fecha y Hora</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Obstetra</TableHead>
-                      <TableHead className="font-semibold text-gray-700">Estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {consultasFiltradas.filter(c => c.tipo === "PRENATAL").length > 0 ? (
-                      consultasFiltradas.filter(c => c.tipo === "PRENATAL").map(renderConsultaRow)
-                    ) : (
+          <TabsContent value="controles" className="mt-3">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-0">
+                <div className="bg-white rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                          No hay controles prenatales
-                        </TableCell>
+                        <TableHead className="font-semibold text-gray-700">Paciente</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Fecha y Hora</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Tipo</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Motivo</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Obstetra</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Estado</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </TableHeader>
+                    <TableBody>
+                      {consultasFiltradas.filter(c => c.tipo === "PRENATAL").length > 0 ? (
+                        consultasFiltradas.filter(c => c.tipo === "PRENATAL").map(renderConsultaRow)
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                            No hay controles prenatales
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Dialogs */}
