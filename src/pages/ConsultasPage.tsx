@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { Plus, Calendar, FileText, ArrowLeft } from "lucide-react";
+import { Plus, Search, Calendar, FileText, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
- 
+import { Input } from "../components/ui/input";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
@@ -177,7 +177,8 @@ export function ConsultasPage() {
   const [tipoFilter, setTipoFilter] = useState<string>("TODOS");
   const [estadoFilter, setEstadoFilter] = useState<string>("TODOS");
   const [obstetraFilter, setObstetraFilter] = useState<string>("TODOS");
-  const [pacienteFilter, setPacienteFilter] = useState<string>("TODOS");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState<string>("todas");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedConsulta, setSelectedConsulta] = useState<Consulta | null>(null);
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
@@ -189,25 +190,21 @@ export function ConsultasPage() {
     return Array.from(setNames).sort();
   }, [consultas]);
 
-  const uniquePacientes = useMemo(() => {
-    const map = new Map<string, string>();
-    consultas.forEach(c => {
-      const label = `${c.paciente.nombres} ${c.paciente.apellidos} - ${c.paciente.doc_identidad}`;
-      map.set(c.paciente.doc_identidad, label);
-    });
-    return Array.from(map.entries()).map(([dni, label]) => ({ dni, label })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [consultas]);
+  
 
   const consultasFiltradas = useMemo(() => {
     return consultas.filter(consulta => {
+      const matchSearch = searchTerm === "" ||
+        consulta.paciente.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consulta.paciente.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        consulta.paciente.doc_identidad.includes(searchTerm);
       const matchTipo = tipoFilter === "TODOS" || consulta.tipo === tipoFilter;
       const matchEstado = estadoFilter === "TODOS" || consulta.estado === estadoFilter;
       const matchObstetra = obstetraFilter === "TODOS" || consulta.obstetra.username === obstetraFilter;
-      const matchPaciente = pacienteFilter === "TODOS" || consulta.paciente.doc_identidad === pacienteFilter;
 
-      return matchTipo && matchEstado && matchObstetra && matchPaciente;
+      return matchSearch && matchTipo && matchEstado && matchObstetra;
     });
-  }, [consultas, tipoFilter, estadoFilter, obstetraFilter, pacienteFilter]);
+  }, [consultas, searchTerm, tipoFilter, estadoFilter, obstetraFilter]);
 
   // Agrupar por estado
   const consultasProgramadas = consultasFiltradas.filter(c => c.estado === "PROGRAMADA");
@@ -366,11 +363,24 @@ export function ConsultasPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 mb-4 p-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">Tipo:</span>
+        <div className="grid grid-cols-5 gap-4 mb-4 p-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-gray-600">Buscar</span>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
+              <Input
+                placeholder="Nombre o DNI del paciente"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 border-gray-200 h-10 bg-white"
+                style={{ paddingLeft: '2.5rem' }}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-gray-600">Tipo</span>
             <Select value={tipoFilter} onValueChange={setTipoFilter}>
-              <SelectTrigger className="w-48 border-gray-200 bg-white h-10">
+              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
                 <SelectValue placeholder="Todos los tipos" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -381,10 +391,10 @@ export function ConsultasPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">Estado:</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-gray-600">Estado</span>
             <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-              <SelectTrigger className="w-48 border-gray-200 bg-white h-10">
+              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -395,10 +405,10 @@ export function ConsultasPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">Obstetra:</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-gray-600">Obstetra</span>
             <Select value={obstetraFilter} onValueChange={setObstetraFilter}>
-              <SelectTrigger className="w-56 border-gray-200 bg-white h-10">
+              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
                 <SelectValue placeholder="Todos los obstetras" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -409,23 +419,23 @@ export function ConsultasPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">Paciente:</span>
-            <Select value={pacienteFilter} onValueChange={setPacienteFilter}>
-              <SelectTrigger className="w-64 border-gray-200 bg-white h-10">
-                <SelectValue placeholder="Todos los pacientes" />
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-gray-600">Ámbito de búsqueda</span>
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full border-gray-200 bg-white h-10">
+                <SelectValue placeholder="Pestaña actual" />
               </SelectTrigger>
               <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                <SelectItem value="TODOS">Todos los pacientes</SelectItem>
-                {uniquePacientes.map(p => (
-                  <SelectItem key={p.dni} value={p.dni}>{p.label}</SelectItem>
-                ))}
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="programadas">Programadas</SelectItem>
+                <SelectItem value="atendidas">Atendidas</SelectItem>
+                <SelectItem value="controles">Controles</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <Tabs defaultValue="todas" className="space-y-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
           <TabsList className="bg-transparent">
             <TabsTrigger value="todas" className="text-sm">
               Todas ({consultasFiltradas.length})
