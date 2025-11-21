@@ -11,7 +11,9 @@ import {
   Stethoscope,
   AlertCircle,
   ArrowRight,
-  Loader2
+  Loader2,
+  ClipboardList, 
+  FileText 
 } from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
 import { ConsultasChart } from "../components/ConsultasChart";
@@ -23,7 +25,6 @@ import { collection, query, where, onSnapshot, Timestamp } from "firebase/firest
 
 export default function Home() {
   const navigate = useNavigate();
-  // Esta variable causaba error porque no se leía. Ahora la usaremos.
   const [isLoading, setIsLoading] = useState(true); 
 
   // Estados para los contadores reales
@@ -34,10 +35,10 @@ export default function Home() {
     derivacionesUrgentes: 0
   });
 
+  // Estado para las alertas dinámicas
   const [alerts, setAlerts] = useState<{ id: number; type: "ALTA" | "MEDIA"; message: string }[]>([]);
 
   useEffect(() => {
-    // Iniciamos carga
     setIsLoading(true);
 
     // 1. Escuchar Pacientes Activos
@@ -79,7 +80,6 @@ export default function Home() {
     const qDerivaciones = query(collection(db, "derivaciones"), where("prioridad", "==", "ALTA"));
     const unsubDerivaciones = onSnapshot(qDerivaciones, (snap) => {
       setStats(prev => ({ ...prev, derivacionesUrgentes: snap.size }));
-      // Aquí terminamos de cargar la data inicial
       setIsLoading(false); 
     });
 
@@ -119,7 +119,6 @@ export default function Home() {
     setAlerts(newAlerts);
   }, [stats]);
 
-  // --- CORRECCIÓN: Usamos isLoading y Loader2 aquí ---
   if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-pink-50">
@@ -235,6 +234,163 @@ export default function Home() {
             </div>
             <ArrowRight className="w-4 h-4 text-white" />
           </Button>
+        </div>
+      </div>
+
+      {/* --- SECCIÓN RECUPERADA: Módulos del Sistema --- */}
+      <div>
+        <h2 className="text-foreground mb-6 font-medium text-lg">Módulos del Sistema</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Gestión de Pacientes */}
+          <Card className="hover:shadow-xl transition-all border-border/50 group cursor-pointer" onClick={() => navigate('/pacientes')}>
+            <CardHeader>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-gradient-to-br from-pink-100 to-rose-100 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Users className="w-7 h-7 text-pink-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Pacientes</CardTitle>
+                  <Badge variant="secondary" className="mt-1">{stats.pacientesActivos} activos</Badge>
+                </div>
+              </div>
+              <CardDescription>Gestión completa del registro de pacientes</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
+                <span className="flex items-center">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Ver Todos los Pacientes
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Consultas */}
+          <Card className="hover:shadow-xl transition-all border-border/50 group cursor-pointer" onClick={() => navigate('/consultas')}>
+            <CardHeader>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-gradient-to-br from-rose-100 to-pink-100 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Calendar className="w-7 h-7 text-rose-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Consultas</CardTitle>
+                  <Badge variant="secondary" className="mt-1">{stats.consultasHoy} hoy</Badge>
+                </div>
+              </div>
+              <CardDescription>Prenatal, postparto y atención de partos</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
+                <span className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Ver Agenda
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Partos */}
+          <Card className="hover:shadow-xl transition-all border-border/50 group cursor-pointer" onClick={() => navigate('/partos')}>
+            <CardHeader>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-gradient-to-br from-pink-100 to-fuchsia-100 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Baby className="w-7 h-7 text-pink-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Partos</CardTitle>
+                  <Badge variant="secondary" className="mt-1">Registro</Badge>
+                </div>
+              </div>
+              <CardDescription>Registro y seguimiento de nacimientos</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
+                <span className="flex items-center">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Ver Historial
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Programas */}
+          <Card className="hover:shadow-xl transition-all border-border/50 group cursor-pointer" onClick={() => navigate('/programas')}>
+            <CardHeader>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-gradient-to-br from-purple-100 to-pink-100 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                  <ClipboardList className="w-7 h-7 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Programas</CardTitle>
+                  <Badge variant="secondary" className="mt-1">Gestión</Badge>
+                </div>
+              </div>
+              <CardDescription>Inscripciones y planes de seguimiento</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
+                <span className="flex items-center">
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Ver Programas
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Derivaciones */}
+          <Card className="hover:shadow-xl transition-all border-border/50 group cursor-pointer" onClick={() => navigate('/derivaciones')}>
+            <CardHeader>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-gradient-to-br from-orange-100 to-pink-100 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Stethoscope className="w-7 h-7 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Derivaciones</CardTitle>
+                  <Badge variant="destructive" className="mt-1">{stats.derivacionesUrgentes} urgentes</Badge>
+                </div>
+              </div>
+              <CardDescription>Envío a especialistas externos</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
+                <span className="flex items-center">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Ver Derivaciones
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Diagnósticos */}
+          <Card className="hover:shadow-xl transition-all border-border/50 group cursor-pointer" onClick={() => navigate('/diagnosticos')}>
+            <CardHeader>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-gradient-to-br from-indigo-100 to-pink-100 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                  <Activity className="w-7 h-7 text-indigo-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Diagnósticos</CardTitle>
+                  <Badge variant="secondary" className="mt-1">CIE-10</Badge>
+                </div>
+              </div>
+              <CardDescription>Registro clínico y clasificación</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
+                <span className="flex items-center">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Buscar Diagnósticos
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>
