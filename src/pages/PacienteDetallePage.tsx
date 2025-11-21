@@ -11,7 +11,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft, Save, User, FileText, AlertTriangle, Loader2, Baby } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner'; // <-- IMPORTANTE: Importamos Toaster
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -27,14 +27,12 @@ export default function PacienteDetallePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Estados para el formulario de Historia Clínica
   const [historia, setHistoria] = useState({
     gestas: 0, partos: 0, abortos: 0, cesareas: 0, hijos_vivos: 0,
     alergias: '', antecedentes_personales: '', antecedentes_familiares: '',
     fum: '', fpp: ''
   });
 
-  // Helper fecha
   const toDate = (timestamp: any) => {
     if (!timestamp) return new Date();
     if (timestamp instanceof Date) return timestamp;
@@ -57,7 +55,6 @@ export default function PacienteDetallePage() {
           const data = docSnap.data() as Omit<Patient, "id">;
           setPatient({ id: docSnap.id, ...data });
           
-          // Cargar form
           setHistoria({
             gestas: data.antecedentes_gestas || 0,
             partos: data.antecedentes_partos || 0,
@@ -71,12 +68,12 @@ export default function PacienteDetallePage() {
             fpp: data.fpp || ''
           });
 
-          // 2. Cargar Historial de Consultas de este paciente
+          // 2. Cargar Historial de Consultas
           const qConsultas = query(collection(db, "consultas"), where("id_paciente", "==", id), orderBy("fecha", "desc"));
           const snapConsultas = await getDocs(qConsultas);
           setConsultas(snapConsultas.docs.map(d => ({ id: d.id, ...d.data() } as Consulta)));
 
-          // 3. Cargar Historial de Partos de este paciente
+          // 3. Cargar Historial de Partos
           const qPartos = query(collection(db, "partos"), where("paciente_dni", "==", id), orderBy("fecha_parto", "desc"));
           const snapPartos = await getDocs(qPartos);
           setPartos(snapPartos.docs.map(d => ({ id: d.id, ...d.data() } as Parto)));
@@ -111,7 +108,7 @@ export default function PacienteDetallePage() {
         fum: historia.fum,
         fpp: historia.fpp
       });
-      toast.success("Historia clínica actualizada");
+      toast.success("Historia clínica actualizada correctamente");
     } catch (error) {
       console.error(error);
       toast.error("Error al guardar");
@@ -135,8 +132,10 @@ export default function PacienteDetallePage() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl min-h-screen bg-gradient-to-br from-pink-50 to-white">
+      {/* <-- AÑADIDO: Componente para mostrar las notificaciones --> */}
+      <Toaster position="top-right" /> 
       
-      {/* Header con botón volver */}
+      {/* Header */}
       <div className="mb-6">
         <Button variant="ghost" onClick={() => navigate('/pacientes')} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" /> Volver a Pacientes
@@ -166,7 +165,7 @@ export default function PacienteDetallePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUMNA IZQUIERDA: Datos de Contacto */}
+        {/* COLUMNA IZQUIERDA */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -188,11 +187,11 @@ export default function PacienteDetallePage() {
 
           <Card>
              <CardHeader><CardTitle className="text-lg">Sucursal</CardTitle></CardHeader>
-             <CardContent><p className="text-sm">{patient.sucursal_nombre}</p></CardContent>
+             <CardContent><p className="text-sm flex items-center gap-2">{patient.sucursal_nombre}</p></CardContent>
           </Card>
         </div>
 
-        {/* COLUMNA DERECHA: Historia y Actividad */}
+        {/* COLUMNA DERECHA */}
         <div className="lg:col-span-2 space-y-6">
           
           <Tabs defaultValue="historia" className="w-full">
@@ -212,7 +211,7 @@ export default function PacienteDetallePage() {
                       <CardDescription>Datos clínicos y embarazo actual</CardDescription>
                     </div>
                     <Button onClick={handleSaveHistoria} disabled={isSaving} className="bg-pink-600 hover:bg-pink-700">
-                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-2" /> Guardar</>}
+                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-2" /> Guardar Cambios</>}
                     </Button>
                   </div>
                 </CardHeader>
@@ -255,9 +254,7 @@ export default function PacienteDetallePage() {
               </Card>
             </TabsContent>
 
-            {/* PESTAÑA 2: HISTORIAL DE CONSULTAS Y PARTOS */}
             <TabsContent value="atenciones">
-               {/* Consultas */}
                <Card className="mt-4">
                 <CardHeader><CardTitle className="text-base">Historial de Consultas</CardTitle></CardHeader>
                 <CardContent>
@@ -286,7 +283,6 @@ export default function PacienteDetallePage() {
                 </CardContent>
               </Card>
 
-              {/* Partos */}
               <Card className="mt-4">
                 <CardHeader><CardTitle className="text-base">Historial de Partos</CardTitle></CardHeader>
                 <CardContent>
