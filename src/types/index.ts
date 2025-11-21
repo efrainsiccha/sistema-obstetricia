@@ -1,5 +1,6 @@
 // src/types/index.ts
 
+// 1. TIPO PROGRAMA
 export interface Programa {
   id: string; 
   nombre: string;
@@ -7,24 +8,27 @@ export interface Programa {
   estado: "ACTIVO" | "INACTIVO";
 }
 
+// 2. TIPO PACIENTE (Actualizado con los nuevos campos)
 export interface Patient {
   id: string; // Será el DNI
-  doc_identidad: string; // Lo mantenemos también como campo para facilitar búsquedas
+  doc_identidad: string;
   nombres: string;
   apellidos: string;
   fecha_nacimiento: { seconds: number; nanoseconds: number } | Date;
-  edad?: number; // Calculada (opcional guardar, pero útil)
-  sexo: "F" | "M"; // Nuevo
-  grupo_sanguineo?: string; // Nuevo (A+, O-, etc)
+  edad?: number; 
+  // Campos nuevos obligatorios/opcionales según tu formulario
+  sexo: "F" | "M"; 
+  grupo_sanguineo?: string; 
   telefono: string;
-  email?: string; // Nuevo
+  email?: string; 
   direccion: string;
-  contacto_emergencia?: string; // Nuevo
+  contacto_emergencia?: string; 
   sucursal_nombre: string;
   id_sucursal: string;
   estado: string;
 }
 
+// 3. TIPO PARTO
 export interface Parto {
   id: string;
   paciente_nombres: string;
