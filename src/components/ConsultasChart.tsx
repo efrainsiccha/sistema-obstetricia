@@ -1,82 +1,53 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
-const data = [
-  {
-    dia: 'Lun',
-    Prenatal: 12,
-    Postparto: 5,
-    Parto: 2,
-  },
-  {
-    dia: 'Mar',
-    Prenatal: 15,
-    Postparto: 8,
-    Parto: 3,
-  },
-  {
-    dia: 'Mié',
-    Prenatal: 10,
-    Postparto: 6,
-    Parto: 1,
-  },
-  {
-    dia: 'Jue',
-    Prenatal: 18,
-    Postparto: 7,
-    Parto: 4,
-  },
-  {
-    dia: 'Vie',
-    Prenatal: 14,
-    Postparto: 9,
-    Parto: 2,
-  },
-  {
-    dia: 'Sáb',
-    Prenatal: 8,
-    Postparto: 4,
-    Parto: 1,
-  },
-  {
-    dia: 'Dom',
-    Prenatal: 5,
-    Postparto: 3,
-    Parto: 1,
-  },
-];
+// Definimos la estructura de los datos que espera el gráfico
+interface ChartData {
+  name: string; // Ej: "Lun", "Mar"
+  Prenatal: number;
+  Postparto: number;
+  Planificacion: number;
+  Otro: number;
+}
 
-export function ConsultasChart() {
+interface Props {
+  data: ChartData[];
+}
+
+export function ConsultasChart({ data }: Props) {
+  // Si no hay datos, mostramos un mensaje o un gráfico vacío
+  if (!data || data.length === 0) {
+    return <div className="h-[300px] flex items-center justify-center text-muted-foreground">Cargando datos...</div>;
+  }
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#fdd8e5" />
-        <XAxis 
-          dataKey="dia" 
-          stroke="#846871"
-          style={{ fontSize: '14px' }}
-        />
-        <YAxis 
-          stroke="#846871"
-          style={{ fontSize: '14px' }}
-        />
-        <Tooltip 
-          contentStyle={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #fdd8e5',
-            borderRadius: '8px',
-            padding: '10px'
-          }}
-        />
-        <Legend 
-          wrapperStyle={{
-            paddingTop: '20px',
-            fontSize: '14px'
-          }}
-        />
-        <Bar dataKey="Prenatal" fill="#d4588f" radius={[8, 8, 0, 0]} />
-        <Bar dataKey="Postparto" fill="#f8a5c2" radius={[8, 8, 0, 0]} />
-        <Bar dataKey="Parto" fill="#ff85a1" radius={[8, 8, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="h-[300px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis 
+            dataKey="name" 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            dy={10}
+          />
+          <YAxis 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+          />
+          <Tooltip 
+            cursor={{ fill: '#fce7f3', opacity: 0.5 }}
+            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+          />
+          <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
+          
+          {/* Barras apiladas o agrupadas. Aquí las ponemos agrupadas para comparar mejor */}
+          <Bar dataKey="Prenatal" fill="#db2777" radius={[4, 4, 0, 0]} name="Prenatal" />
+          <Bar dataKey="Postparto" fill="#f472b6" radius={[4, 4, 0, 0]} name="Postparto" />
+          <Bar dataKey="Planificacion" fill="#fb7185" radius={[4, 4, 0, 0]} name="Planificación" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

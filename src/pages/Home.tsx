@@ -12,8 +12,8 @@ import {
   AlertCircle,
   ArrowRight,
   Loader2,
-  ClipboardList, 
-  FileText 
+  ClipboardList,
+  FileText
 } from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
 import { ConsultasChart } from "../components/ConsultasChart";
@@ -37,6 +37,9 @@ export default function Home() {
 
   // Estado para las alertas dinámicas
   const [alerts, setAlerts] = useState<{ id: number; type: "ALTA" | "MEDIA"; message: string }[]>([]);
+  
+  // Estado para los datos del gráfico
+  const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -47,7 +50,7 @@ export default function Home() {
       setStats(prev => ({ ...prev, pacientesActivos: snap.size }));
     });
 
-    // 2. Escuchar Consultas (Hoy y Pendientes)
+    // 2. Escuchar Consultas (Hoy, Pendientes y Gráfico)
     const unsubConsultas = onSnapshot(collection(db, "consultas"), (snap) => {
       const now = new Date();
       const todayStr = now.toDateString(); 
@@ -55,17 +58,42 @@ export default function Home() {
       let hoyCount = 0;
       let pendientesCount = 0;
 
+      // Preparar datos para el gráfico (Últimos 7 días)
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(now.getDate() - 6 + i); // De hace 6 días hasta hoy
+        return {
+          dateObj: d,
+          name: d.toLocaleDateString('es-ES', { weekday: 'short' }), // "lun", "mar"
+          fullDate: d.toDateString(),
+          Prenatal: 0,
+          Postparto: 0,
+          Planificacion: 0,
+          Otro: 0
+        };
+      });
+
       snap.forEach(doc => {
         const data = doc.data();
         const fechaTimestamp = data.fecha as Timestamp;
         const fecha = fechaTimestamp.toDate();
+        const tipo = data.tipo || "OTRO";
 
+        // Contadores
         if (fecha.toDateString() === todayStr) {
           hoyCount++;
         }
-
         if (fecha > now) {
           pendientesCount++;
+        }
+
+        // Llenar gráfico
+        const dayData = last7Days.find(d => d.fullDate === fecha.toDateString());
+        if (dayData) {
+          if (tipo === "PRENATAL") dayData.Prenatal++;
+          else if (tipo === "POSTPARTO") dayData.Postparto++;
+          else if (tipo === "PLANIFICACION") dayData.Planificacion++;
+          else dayData.Otro++;
         }
       });
 
@@ -74,6 +102,8 @@ export default function Home() {
         consultasHoy: hoyCount, 
         consultasPendientes: pendientesCount 
       }));
+      
+      setChartData(last7Days);
     });
 
     // 3. Escuchar Derivaciones Urgentes
@@ -190,7 +220,8 @@ export default function Home() {
               <CardDescription>Distribución por tipo de consulta</CardDescription>
             </CardHeader>
             <CardContent>
-              <ConsultasChart />
+              {/* Pasamos los datos reales al componente del gráfico */}
+              <ConsultasChart data={chartData} />
             </CardContent>
           </Card>
         </div>
@@ -237,7 +268,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- SECCIÓN RECUPERADA: Módulos del Sistema --- */}
+      {/* Módulos del Sistema (Recuperados) */}
       <div>
         <h2 className="text-foreground mb-6 font-medium text-lg">Módulos del Sistema</h2>
         
