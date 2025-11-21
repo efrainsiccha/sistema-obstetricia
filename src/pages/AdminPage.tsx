@@ -39,7 +39,6 @@ const userSchema = z.object({
   password: z.string().min(6, "Mínimo 6 caracteres"),
   rol: z.enum(["ADMIN", "OBSTETRA"]), 
   estado: z.enum(["ACTIVO", "INACTIVO"]),
-  // Ahora validamos que se seleccione una sucursal
   sucursal: z.string().min(1, "La sucursal es requerida"),
   dni: z.string().min(8, "DNI inválido").max(12),
   colegiatura: z.string().min(3, "Colegiatura requerida"),
@@ -62,7 +61,6 @@ type FirestoreUser = {
   jornada?: string;
 };
 
-// Tipo para cargar las sucursales
 interface SucursalItem {
   id: string;
   nombre: string;
@@ -77,7 +75,6 @@ export default function AdminPage() {
   const [usuarios, setUsuarios] = useState<FirestoreUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Estado para la lista de sucursales
   const [listaSucursales, setListaSucursales] = useState<SucursalItem[]>([]);
 
   // Estados para el dashboard
@@ -112,7 +109,7 @@ export default function AdminPage() {
 
   // --- Lógica de Datos ---
 
-  // 1. Cargar la lista de sucursales para el desplegable
+  // 1. Cargar la lista de sucursales
   useEffect(() => {
     const fetchSucursalesList = async () => {
       try {
@@ -130,7 +127,7 @@ export default function AdminPage() {
     fetchSucursalesList();
   }, []);
 
-  // 2. LEER usuarios (Tiempo real)
+  // 2. LEER usuarios
   useEffect(() => {
     setIsLoading(true);
     const usersCollectionRef = collection(db, "usuarios");
@@ -151,7 +148,7 @@ export default function AdminPage() {
     return () => unsubscribe();
   }, []);
 
-  // ... (Aquí van tus otros useEffects del Dashboard, idénticos a antes) ...
+  // Dashboard Hooks
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "pacientes"), (querySnapshot) => {
       const total = querySnapshot.size;
@@ -223,23 +220,14 @@ export default function AdminPage() {
     return () => unsubscribe();
   }, []);
 
-  // CREAR usuario
+  // CREAR usuario (onSubmit) - REAL
   const onSubmit = async (data: UserFormData) => {
     toast("Creando usuario...", { icon: "⏳" });
     try {
-      // Buscamos el nombre real de la sucursal para guardarlo (opcional, la funcion guarda el string)
-      // La cloud function recibe 'sucursal' que es el string del nombre en este caso
-      // OJO: En el formulario de pacientes guardabamos ID y Nombre.
-      // Aquí para simplificar el backend, guardaremos el NOMBRE de la sucursal directamente 
-      // o el ID, dependiendo de cómo quieras mostrarlo.
-      // Vamos a guardar el NOMBRE para que se vea bonito en la tabla.
-      
-      // Buscamos el objeto sucursal seleccionado
-      const sucObj = listaSucursales.find(s => s.nombre === data.sucursal);
-      
-      // Enviamos los datos
+      // Llamamos a la Cloud Function
       const result = await crearUsuarioCallable(data);
       const resultData = result.data as { status: string, message: string };
+      
       toast.success(resultData.message || "Usuario creado con éxito.");
       form.reset(); 
     } catch (error: any) {
@@ -258,7 +246,6 @@ export default function AdminPage() {
         </Button>
       </div>
 
-      {/* ESTADÍSTICAS (Igual que antes) */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
         <StatsCard title="Usuarios" value={usuarios.length} icon={<Users className="w-5 h-5" />} subtitle={`Admins ${usuarios.filter(u => u.rol === "ADMIN").length}, Obstetras ${usuarios.filter(u => u.rol === "OBSTETRA").length}`} />
         <StatsCard title="Pacientes" value={pacientesCount} icon={<Users className="w-5 h-5" />} />
@@ -468,7 +455,6 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  {/* CAMPO SUCURSAL: AHORA ES UN SELECT */}
                   <FormField
                     control={form.control}
                     name="sucursal"
@@ -511,14 +497,7 @@ export default function AdminPage() {
                   />
                   
                   <Button type="submit" className="w-full mt-4" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creando...
-                      </>
-                    ) : (
-                      "Crear Usuario"
-                    )}
+                    {form.formState.isSubmitting ? "Creando..." : "Crear Usuario"}
                   </Button>
 
                 </form>
