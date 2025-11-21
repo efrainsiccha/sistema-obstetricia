@@ -22,48 +22,49 @@ import {
   FormLabel,
   FormMessage,
 } from "./ui/form";
-import { type Patient } from '../pages/PacientesPage'; // Importamos la interfaz
 
-// --- Tipos y Esquemas ---
+// --- CORRECCIÓN 1: Importamos el tipo desde '../types' ---
+import { type Patient } from '../types'; 
 
-// Esquema de validación (el mismo que el de registro)
+// --- Tipos y Esquemas (Actualizados con los nuevos campos) ---
+
 const patientSchema = z.object({
-  doc_identidad: z.string().min(8, "Debe tener al menos 8 dígitos").max(15, "No debe exceder 15 dígitos"),
-  nombres: z.string().min(3, "El nombre es requerido"),
-  apellidos: z.string().min(3, "El apellido es requerido"),
+  // El DNI no se suele editar porque es el ID, pero lo validamos igual
+  doc_identidad: z.string().min(8).max(15),
+  nombres: z.string().min(2, "El nombre es requerido"),
+  apellidos: z.string().min(2, "El apellido es requerido"),
   fecha_nacimiento: z.string().refine((date) => new Date(date) < new Date(), {
-    message: "La fecha de nacimiento no puede ser futura",
+    message: "Fecha inválida",
   }),
-  telefono: z.string().optional(),
+  // Nuevos campos
+  sexo: z.enum(["F", "M"]),
+  grupo_sanguineo: z.string().optional(),
+  telefono: z.string().min(6, "Teléfono requerido"),
+  email: z.string().email("Correo inválido").optional().or(z.literal("")),
   direccion: z.string().optional(),
+  contacto_emergencia: z.string().optional(),
+  
   id_sucursal: z.string().min(1, "Debe seleccionar una sucursal"),
-  estado: z.enum(["ACTIVO", "INACTIVO"]), // ¡Añadido! Para poder editar el estado
+  estado: z.enum(["ACTIVO", "INACTIVO"]),
 });
 
 type PatientFormData = z.infer<typeof patientSchema>;
 
-// Tipo para Sucursales
 interface Sucursal {
   id: string;
   nombre: string;
 }
 
-// Props que recibe el componente
 interface Props {
   patient: Patient;
 }
 
-// --- Helpers de Fecha ---
-
-// Convierte un Timestamp de Firestore (o Date) a un objeto Date
+// Helpers de Fecha
 const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
+  if (timestamp instanceof Date) return timestamp;
   return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
 };
 
-// Convierte una fecha a string "YYYY-MM-DD" para el <input type="date">
 const formatDateForInput = (date: Date): string => {
   return date.toISOString().split('T')[0];
 };
@@ -74,12 +75,11 @@ export function EditPatientDialog({ patient }: Props) {
   const [open, setOpen] = useState(false);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
 
-  // 1. Convertimos la fecha de Firestore a string YYYY-MM-DD para el formulario
+  // Convertimos fecha
   const defaultDate = patient.fecha_nacimiento 
     ? formatDateForInput(toDate(patient.fecha_nacimiento))
     : '';
 
-  // 2. Inicializamos el formulario con los datos del paciente
   const form = useForm<PatientFormData>({
     resolver: zodResolver(patientSchema),
     defaultValues: {
@@ -87,14 +87,17 @@ export function EditPatientDialog({ patient }: Props) {
       nombres: patient.nombres || '',
       apellidos: patient.apellidos || '',
       fecha_nacimiento: defaultDate,
+      sexo: patient.sexo || 'F', // Valor por defecto si no existe
+      grupo_sanguineo: patient.grupo_sanguineo || '',
       telefono: patient.telefono || '',
+      email: patient.email || '',
       direccion: patient.direccion || '',
+      contacto_emergencia: patient.contacto_emergencia || '',
       id_sucursal: patient.id_sucursal || '',
       estado: patient.estado as "ACTIVO" | "INACTIVO" || "ACTIVO",
     },
   });
 
-  // 3. Cargar sucursales (igual que en el formulario de registro)
   useEffect(() => {
     const fetchSucursales = async () => {
       const sucursalesCollection = collection(db, 'sucursales');
@@ -105,32 +108,28 @@ export function EditPatientDialog({ patient }: Props) {
       }));
       setSucursales(sucursalesList);
     };
-    // Solo cargar sucursales si el diálogo está abierto
-    if (open) {
-      fetchSucursales();
-    }
+    if (open) fetchSucursales();
   }, [open]);
 
-  // 4. Función de envío (onSubmit) para ACTUALIZAR
   const onSubmit = async (data: PatientFormData) => {
     try {
       const sucursalSeleccionada = sucursales.find(s => s.id === data.id_sucursal);
-      
-      // Apuntamos al documento existente usando el ID del paciente
-      const patientDocRef = doc(db, "pacientes", patient.id);
+      const patientDocRef = doc(db, "pacientes", patient.id); // patient.id es el DNI
 
-      // Usamos 'updateDoc' en lugar de 'addDoc'
       await updateDoc(patientDocRef, {
-        doc_identidad: data.doc_identidad,
+        // No actualizamos doc_identidad porque es el ID del documento
         nombres: data.nombres,
         apellidos: data.apellidos,
-        fecha_nacimiento: new Date(data.fecha_nacimiento), // Convertir de nuevo a Date
-        telefono: data.telefono || '',
+        fecha_nacimiento: new Date(data.fecha_nacimiento),
+        sexo: data.sexo,
+        grupo_sanguineo: data.grupo_sanguineo || '',
+        telefono: data.telefono,
+        email: data.email || '',
         direccion: data.direccion || '',
+        contacto_emergencia: data.contacto_emergencia || '',
         id_sucursal: data.id_sucursal,
         sucursal_nombre: sucursalSeleccionada?.nombre || 'Desconocida',
         estado: data.estado,
-        // No actualizamos 'creado_en', pero podríamos añadir 'actualizado_en'
         actualizado_en: Timestamp.now(),
       });
 
@@ -138,21 +137,20 @@ export function EditPatientDialog({ patient }: Props) {
       setOpen(false);
 
     } catch (error) {
-      console.error("Error al actualizar paciente: ", error);
-      toast.error('Error al actualizar paciente. Inténtelo de nuevo.');
+      console.error("Error al actualizar: ", error);
+      toast.error('Error al actualizar. Inténtelo de nuevo.');
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* El botón de "Editar" es el Trigger */}
       <DialogTrigger asChild>
         <Button variant="outline" size="icon" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
           <FileEdit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-gray-200 shadow-xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white border border-gray-200 shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-pink-700 flex items-center gap-2">
             <FileEdit className="h-5 w-5" />
@@ -161,18 +159,18 @@ export function EditPatientDialog({ patient }: Props) {
         </DialogHeader>
         
         <Form {...form}>
-          {/* El formulario es idéntico al de registro, pero con valores por defecto */}
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
+              {/* DNI Deshabilitado (es el ID) */}
               <FormField
                 control={form.control}
                 name="doc_identidad"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Documento de Identidad <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>DNI (No editable)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: 12345678" {...field} className="border-pink-200 focus:border-pink-400" />
+                      <Input {...field} disabled className="bg-gray-100" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -181,20 +179,19 @@ export function EditPatientDialog({ patient }: Props) {
 
               <FormField
                 control={form.control}
-                name="id_sucursal"
+                name="estado"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sucursal <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>Estado</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="border-pink-200 focus:border-pink-400">
-                          <SelectValue placeholder="Seleccione una sucursal" />
+                        <SelectTrigger>
+                          <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                        {sucursales.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>
-                        ))}
+                      <SelectContent className="bg-white">
+                        <SelectItem value="ACTIVO">Activo</SelectItem>
+                        <SelectItem value="INACTIVO">Inactivo</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -207,10 +204,8 @@ export function EditPatientDialog({ patient }: Props) {
                 name="nombres"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombres <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nombres de la paciente" {...field} className="border-pink-200 focus:border-pink-400" />
-                    </FormControl>
+                    <FormLabel>Nombres</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -221,10 +216,8 @@ export function EditPatientDialog({ patient }: Props) {
                 name="apellidos"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Apellidos <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Input placeholder="Apellidos de la paciente" {...field} className="border-pink-200 focus:border-pink-400" />
-                    </FormControl>
+                    <FormLabel>Apellidos</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -235,13 +228,35 @@ export function EditPatientDialog({ patient }: Props) {
                 name="fecha_nacimiento"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fecha de Nacimiento <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>Fecha de Nacimiento</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input type="date" {...field} className="border-pink-200 focus:border-pink-400" />
-                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-pink-400 pointer-events-none" />
+                        <Input type="date" {...field} />
+                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                       </div>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="sexo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sexo</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="F">Femenino</SelectItem>
+                        <SelectItem value="M">Masculino</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -253,9 +268,19 @@ export function EditPatientDialog({ patient }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Teléfono</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: 987654321" {...field} className="border-pink-200 focus:border-pink-400" />
-                    </FormControl>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -265,39 +290,36 @@ export function EditPatientDialog({ patient }: Props) {
                 control={form.control}
                 name="direccion"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="md:col-span-2">
                     <FormLabel>Dirección</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Dirección completa" {...field} className="border-pink-200 focus:border-pink-400" />
-                    </FormControl>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* ¡NUEVO CAMPO! Para cambiar el estado */}
               <FormField
                 control={form.control}
-                name="estado"
+                name="id_sucursal"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado</FormLabel>
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Sucursal</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="border-pink-200 focus:border-pink-400">
-                          <SelectValue placeholder="Seleccione un estado" />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione sucursal" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                        <SelectItem value="ACTIVO">Activo</SelectItem>
-                        <SelectItem value="INACTIVO">Inactivo</SelectItem>
+                      <SelectContent className="bg-white">
+                        {sucursales.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
