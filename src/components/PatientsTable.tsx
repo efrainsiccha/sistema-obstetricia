@@ -1,9 +1,14 @@
+// src/components/PatientsTable.tsx
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // <-- Importante para navegar
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-// Añadidos iconos Mail y User
-import { Search, Phone, MapPin, Calendar, FileText, Loader2, Mail, User } from 'lucide-react';
-import { useState } from 'react';
+import { Button } from './ui/button'; // Importamos Button
+// Iconos
+import { Search, Phone, MapPin, Calendar, Loader2, Mail, User, FileText } from 'lucide-react';
+
 import { type Patient } from '../types'; 
 import { DeletePatientButton } from './DeletePatientButton';
 import { EditPatientDialog } from './EditPatientDialog'; 
@@ -14,9 +19,10 @@ interface Props {
 }
 
 export function PatientsTable({ patients, isLoading }: Props) {
+  const navigate = useNavigate(); // Hook para navegar
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filtrado mejorado para incluir el email en la búsqueda
+  // Filtrado
   const filteredPatients = patients.filter(patient => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -27,6 +33,7 @@ export function PatientsTable({ patients, isLoading }: Props) {
     );
   });
 
+  // Funciones auxiliares de fecha
   const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Date => {
     if (timestamp instanceof Date) return timestamp;
     if (!timestamp) return new Date(); 
@@ -48,7 +55,7 @@ export function PatientsTable({ patients, isLoading }: Props) {
   const formatDate = (dateTimestamp: { seconds: number; nanoseconds: number } | Date) => {
     const date = toDate(dateTimestamp);
     if (!date) return "Fecha inválida";
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }); // Formato más corto DD/MM/YYYY
+    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const maskDocument = (doc: string) => {
@@ -58,6 +65,7 @@ export function PatientsTable({ patients, isLoading }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Barra de búsqueda */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
         <Input
@@ -76,7 +84,7 @@ export function PatientsTable({ patients, isLoading }: Props) {
               <TableHead className="text-pink-900 w-[100px]">Doc.</TableHead>
               <TableHead className="text-pink-900">Paciente</TableHead>
               <TableHead className="text-pink-900">Edad / Nac.</TableHead>
-              <TableHead className="text-pink-900">Contacto</TableHead> 
+              <TableHead className="text-pink-900">Contacto</TableHead>
               <TableHead className="text-pink-900 hidden md:table-cell">Sucursal</TableHead>
               <TableHead className="text-pink-900">Estado</TableHead>
               <TableHead className="text-pink-900 text-right">Acciones</TableHead>
@@ -106,17 +114,15 @@ export function PatientsTable({ patients, isLoading }: Props) {
                     {maskDocument(patient.doc_identidad)}
                   </TableCell>
                   
-                  {/* Columna 2: Paciente (Nombre, Sexo, Sangre) */}
+                  {/* Columna 2: Paciente */}
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium text-gray-900">{patient.nombres} {patient.apellidos}</span>
                       <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                         {/* Sexo e icono */}
                         <span className="flex items-center gap-1" title={patient.sexo === 'F' ? 'Femenino' : 'Masculino'}>
                           <User className="h-3 w-3 text-pink-400" /> 
                           {patient.sexo}
                         </span>
-                        {/* Grupo Sanguíneo (si existe) */}
                         {patient.grupo_sanguineo && (
                           <span className="bg-pink-100 text-pink-800 px-1.5 py-0.5 rounded-full font-medium text-[10px]">
                             {patient.grupo_sanguineo}
@@ -137,7 +143,7 @@ export function PatientsTable({ patients, isLoading }: Props) {
                     </div>
                   </TableCell>
                   
-                  {/* Columna 4: Contacto (Teléfono, Email, Emergencia) */}
+                  {/* Columna 4: Contacto */}
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       {patient.telefono && (
@@ -158,7 +164,7 @@ export function PatientsTable({ patients, isLoading }: Props) {
                     </div>
                   </TableCell>
                   
-                  {/* Columna 5: Sucursal (oculta en móviles pequeños) */}
+                  {/* Columna 5: Sucursal */}
                   <TableCell className="hidden md:table-cell text-gray-600 text-sm">
                     <div className="flex items-center gap-1 truncate max-w-[120px]" title={patient.sucursal_nombre}>
                       <MapPin className="h-3 w-3 text-pink-500 flex-shrink-0" />
@@ -179,7 +185,21 @@ export function PatientsTable({ patients, isLoading }: Props) {
                   {/* Columna 7: Acciones */}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {/* 1. Botón Ver Historia Clínica (NUEVO) */}
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        title="Ver Historia Clínica"
+                        onClick={() => navigate(`/pacientes/${patient.id}`)} // Usamos el ID (DNI)
+                        className="text-pink-600 hover:text-pink-700 hover:bg-pink-50"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+
+                      {/* 2. Botón Editar */}
                       <EditPatientDialog patient={patient} />
+                      
+                      {/* 3. Botón Eliminar */}
                       <DeletePatientButton 
                         patientId={patient.id} 
                         patientName={`${patient.nombres} ${patient.apellidos}`} 

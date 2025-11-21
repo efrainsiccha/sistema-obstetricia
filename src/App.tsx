@@ -9,6 +9,7 @@ import DerivacionesPage from "./pages/DerivacionesPage";
 import DiagnosticosPage from "./pages/DiagnosticosPage";
 import AdminPage from "./pages/AdminPage"; 
 import Layout from "./components/Layout";
+import PacienteDetallePage from "./pages/PacienteDetallePage";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/consultas" element={<ConsultasPage />} />
           <Route path="/pacientes" element={<PacientesPage />} />
+          <Route path="/pacientes/:id" element={<PacienteDetallePage />} />
           <Route path="/partos" element={<PartosPage />} />
           <Route path="/programas" element={<ProgramasPage />} />
           <Route path="/derivaciones" element={<DerivacionesPage />} />

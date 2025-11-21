@@ -1,6 +1,3 @@
-// src/types/index.ts
-
-// 1. TIPO PROGRAMA
 export interface Programa {
   id: string; 
   nombre: string;
@@ -8,15 +5,14 @@ export interface Programa {
   estado: "ACTIVO" | "INACTIVO";
 }
 
-// 2. TIPO PACIENTE (Actualizado con los nuevos campos)
+// TIPO PACIENTE (Actualizado con Historia Clínica)
 export interface Patient {
-  id: string; // Será el DNI
+  id: string; // DNI
   doc_identidad: string;
   nombres: string;
   apellidos: string;
   fecha_nacimiento: { seconds: number; nanoseconds: number } | Date;
   edad?: number; 
-  // Campos nuevos obligatorios/opcionales según tu formulario
   sexo: "F" | "M"; 
   grupo_sanguineo?: string; 
   telefono: string;
@@ -26,9 +22,24 @@ export interface Patient {
   sucursal_nombre: string;
   id_sucursal: string;
   estado: string;
+
+  // --- Historia Clínica (Nuevos Campos) ---
+  antecedentes_gestas?: number; // G
+  antecedentes_partos?: number; // P
+  antecedentes_abortos?: number; // A
+  antecedentes_cesareas?: number; // C
+  antecedentes_hijos_vivos?: number; // HV
+  
+  antecedentes_personales?: string; // Enfermedades crónicas, cirugías
+  antecedentes_familiares?: string; // Diabetes en familia, etc.
+  alergias?: string;
+  medicacion_actual?: string;
+  
+  // Datos del embarazo actual (si aplica)
+  fum?: string; // Fecha Última Regla (string YYYY-MM-DD para facilitar inputs)
+  fpp?: string; // Fecha Probable Parto
 }
 
-// 3. TIPO PARTO
 export interface Parto {
   id: string;
   paciente_nombres: string;
@@ -44,20 +55,21 @@ export interface Parto {
   sexo_recien_nacido: "M" | "F";
   observaciones?: string; 
 }
-//4 TIPO PARA CONSULTAS
+
 export interface Consulta {
   id: string;
   id_paciente: string;
-  paciente_nombre_completo: string; // Denormalizado para la tabla
+  paciente_nombre_completo: string;
   paciente_dni: string;
   fecha: { seconds: number; nanoseconds: number } | Date;
   tipo: "PRENATAL" | "POSTPARTO" | "PLANIFICACION" | "OTRO";
   motivo: string;
   presion_arterial?: string;
-  peso?: number; // kg
-  talla?: number; // cm
-  edad_gestacional?: string; // semanas
+  peso?: number;
+  talla?: number;
+  edad_gestacional?: string;
   diagnostico: string;
   indicaciones: string;
-  registrado_por: string; // ID del usuario que registró
+  registrado_por?: string;
+  creado_en?: any;
 }
