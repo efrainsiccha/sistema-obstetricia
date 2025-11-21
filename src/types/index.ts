@@ -44,3 +44,20 @@ export interface Parto {
   sexo_recien_nacido: "M" | "F";
   observaciones?: string; 
 }
+//4 TIPO PARA CONSULTAS
+export interface Consulta {
+  id: string;
+  id_paciente: string;
+  paciente_nombre_completo: string; // Denormalizado para la tabla
+  paciente_dni: string;
+  fecha: { seconds: number; nanoseconds: number } | Date;
+  tipo: "PRENATAL" | "POSTPARTO" | "PLANIFICACION" | "OTRO";
+  motivo: string;
+  presion_arterial?: string;
+  peso?: number; // kg
+  talla?: number; // cm
+  edad_gestacional?: string; // semanas
+  diagnostico: string;
+  indicaciones: string;
+  registrado_por: string; // ID del usuario que registró
+}
