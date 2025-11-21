@@ -1,5 +1,3 @@
-// src/pages/Home.tsx
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -7,7 +5,6 @@ import { Badge } from "../components/ui/badge";
 import { 
   Users, 
   Calendar, 
-  FileText, 
   Activity, 
   UserPlus, 
   Baby, 
@@ -26,7 +23,8 @@ import { collection, query, where, onSnapshot, Timestamp } from "firebase/firest
 
 export default function Home() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  // Esta variable causaba error porque no se leía. Ahora la usaremos.
+  const [isLoading, setIsLoading] = useState(true); 
 
   // Estados para los contadores reales
   const [stats, setStats] = useState({
@@ -36,10 +34,10 @@ export default function Home() {
     derivacionesUrgentes: 0
   });
 
-  // Estado para las alertas dinámicas
   const [alerts, setAlerts] = useState<{ id: number; type: "ALTA" | "MEDIA"; message: string }[]>([]);
 
   useEffect(() => {
+    // Iniciamos carga
     setIsLoading(true);
 
     // 1. Escuchar Pacientes Activos
@@ -49,27 +47,22 @@ export default function Home() {
     });
 
     // 2. Escuchar Consultas (Hoy y Pendientes)
-    // Traemos todas las consultas para filtrar fechas en el cliente (más fácil que índices complejos por ahora)
     const unsubConsultas = onSnapshot(collection(db, "consultas"), (snap) => {
       const now = new Date();
-      const todayStr = now.toDateString(); // "Fri Nov 21 2025"
+      const todayStr = now.toDateString(); 
 
       let hoyCount = 0;
       let pendientesCount = 0;
 
       snap.forEach(doc => {
         const data = doc.data();
-        // Convertir Timestamp a Date
         const fechaTimestamp = data.fecha as Timestamp;
         const fecha = fechaTimestamp.toDate();
 
-        // Consultas de HOY
         if (fecha.toDateString() === todayStr) {
           hoyCount++;
         }
 
-        // Consultas FUTURAS (Pendientes)
-        // Si la fecha es mayor a "ahora"
         if (fecha > now) {
           pendientesCount++;
         }
@@ -82,17 +75,14 @@ export default function Home() {
       }));
     });
 
-    // 3. Escuchar Derivaciones Urgentes (Prioridad ALTA)
-    // (Aunque aún no creamos el módulo, esto dejará listo el contador en 0)
+    // 3. Escuchar Derivaciones Urgentes
     const qDerivaciones = query(collection(db, "derivaciones"), where("prioridad", "==", "ALTA"));
     const unsubDerivaciones = onSnapshot(qDerivaciones, (snap) => {
       setStats(prev => ({ ...prev, derivacionesUrgentes: snap.size }));
+      // Aquí terminamos de cargar la data inicial
+      setIsLoading(false); 
     });
 
-    // Finalizar carga inicial (simbólico, ya que son listeners vivos)
-    setIsLoading(false);
-
-    // Limpiar listeners al salir
     return () => {
       unsubPacientes();
       unsubConsultas();
@@ -100,11 +90,10 @@ export default function Home() {
     };
   }, []);
 
-  // Efecto para generar Alertas basadas en los datos
+  // Efecto para generar Alertas
   useEffect(() => {
     const newAlerts: { id: number; type: "ALTA" | "MEDIA"; message: string }[] = [];
     
-    // Alerta 1: Derivaciones Urgentes
     if (stats.derivacionesUrgentes > 0) {
       newAlerts.push({
         id: 1,
@@ -113,7 +102,6 @@ export default function Home() {
       });
     }
 
-    // Alerta 2: Consultas para hoy
     if (stats.consultasHoy > 0) {
       newAlerts.push({
         id: 2,
@@ -123,13 +111,25 @@ export default function Home() {
     } else {
       newAlerts.push({
         id: 3,
-        type: "MEDIA", // Usamos MEDIA o un color neutro
+        type: "MEDIA",
         message: "No hay consultas programadas para hoy."
       });
     }
 
     setAlerts(newAlerts);
   }, [stats]);
+
+  // --- CORRECCIÓN: Usamos isLoading y Loader2 aquí ---
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-pink-50">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-pink-600" />
+          <p className="mt-4 text-lg font-medium text-pink-800">Cargando sistema...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <> 
@@ -161,7 +161,7 @@ export default function Home() {
           title="Pacientes Activos"
           value={stats.pacientesActivos}
           icon={<Users className="w-5 h-5" />}
-          trend="Registrados" // Texto estático o podrías calcular crecimiento
+          trend="Registrados"
         />
         <StatsCard
           title="Consultas Hoy"
@@ -179,7 +179,7 @@ export default function Home() {
           title="Derivaciones Urgentes"
           value={stats.derivacionesUrgentes}
           icon={<AlertCircle className="w-5 h-5" />}
-          urgent={stats.derivacionesUrgentes > 0} // Solo se pone rojo si hay > 0
+          urgent={stats.derivacionesUrgentes > 0}
         />
       </div>
 
@@ -191,14 +191,12 @@ export default function Home() {
               <CardDescription>Distribución por tipo de consulta</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Nota: ConsultasChart sigue usando datos mock internamente. 
-                  Para hacerlo real tendríamos que editar ese componente también. */}
               <ConsultasChart />
             </CardContent>
           </Card>
         </div>
 
-        {/* Acciones Rápidas (Navegación) */}
+        {/* Acciones Rápidas */}
         <div className="space-y-4">
           <h3 className="text-foreground font-medium">Acciones Rápidas</h3>
           
