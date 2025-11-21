@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ArrowLeft, Save, User, FileText, AlertTriangle, Loader2, Calendar, Stethoscope, Baby } from 'lucide-react';
+import { ArrowLeft, Save, User, FileText, AlertTriangle, Loader2, Baby } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
@@ -77,7 +77,6 @@ export default function PacienteDetallePage() {
           setConsultas(snapConsultas.docs.map(d => ({ id: d.id, ...d.data() } as Consulta)));
 
           // 3. Cargar Historial de Partos de este paciente
-          // (Buscamos por DNI, asegúrate de que en partos guardes 'paciente_dni')
           const qPartos = query(collection(db, "partos"), where("paciente_dni", "==", id), orderBy("fecha_parto", "desc"));
           const snapPartos = await getDocs(qPartos);
           setPartos(snapPartos.docs.map(d => ({ id: d.id, ...d.data() } as Parto)));
@@ -137,7 +136,7 @@ export default function PacienteDetallePage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl min-h-screen bg-gradient-to-br from-pink-50 to-white">
       
-      {/* Header */}
+      {/* Header con botón volver */}
       <div className="mb-6">
         <Button variant="ghost" onClick={() => navigate('/pacientes')} className="mb-4 gap-2">
           <ArrowLeft className="h-4 w-4" /> Volver a Pacientes
@@ -167,7 +166,7 @@ export default function PacienteDetallePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUMNA IZQUIERDA: Datos y Resumen */}
+        {/* COLUMNA IZQUIERDA: Datos de Contacto */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -188,22 +187,20 @@ export default function PacienteDetallePage() {
           </Card>
 
           <Card>
-             <CardHeader><CardTitle className="text-lg">Ubicación</CardTitle></CardHeader>
-             <CardContent><p className="text-sm flex items-center gap-2"><Stethoscope className="h-4 w-4 text-pink-500"/> {patient.sucursal_nombre}</p></CardContent>
+             <CardHeader><CardTitle className="text-lg">Sucursal</CardTitle></CardHeader>
+             <CardContent><p className="text-sm">{patient.sucursal_nombre}</p></CardContent>
           </Card>
         </div>
 
         {/* COLUMNA DERECHA: Historia y Actividad */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Pestañas para organizar la info */}
           <Tabs defaultValue="historia" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="historia">Historia Clínica</TabsTrigger>
               <TabsTrigger value="atenciones">Historial de Atenciones</TabsTrigger>
             </TabsList>
 
-            {/* PESTAÑA 1: EL FORMULARIO QUE YA TIENES */}
             <TabsContent value="historia">
               <Card className="border-t-4 border-t-pink-500 mt-4">
                 <CardHeader>
@@ -258,7 +255,7 @@ export default function PacienteDetallePage() {
               </Card>
             </TabsContent>
 
-            {/* PESTAÑA 2: ¡NUEVO! HISTORIAL DE CONSULTAS Y PARTOS */}
+            {/* PESTAÑA 2: HISTORIAL DE CONSULTAS Y PARTOS */}
             <TabsContent value="atenciones">
                {/* Consultas */}
                <Card className="mt-4">
