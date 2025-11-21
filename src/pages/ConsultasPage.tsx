@@ -1,18 +1,26 @@
+// src/pages/ConsultasPage.tsx
+
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, ArrowLeft, Loader2, FileText } from 'lucide-react';
+// CORREGIDO: Eliminado 'User'
+import { Plus, Search, Calendar, ArrowLeft, Loader2, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+// CORREGIDO: Eliminados CardHeader, CardTitle, CardDescription
+import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+// Componentes Nuevos
 import { RegistrarConsultaDialog } from '../components/RegistrarConsultaDialog';
+// Importamos el diálogo de detalle (asegúrate de que el archivo exista)
+import { ConsultaDetalleDialog } from '../components/ConsultaDetalleDialog';
 
 // Firebase
 import { db } from '../lib/firebaseConfig';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+// Importamos el tipo desde la carpeta correcta
 import { type Consulta } from '../types';
 
 // Helper fecha
@@ -26,6 +34,10 @@ export function ConsultasPage() {
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Estados para el detalle
+  const [selectedConsulta, setSelectedConsulta] = useState<Consulta | null>(null);
+  const [isDetalleOpen, setIsDetalleOpen] = useState(false);
 
   // Cargar Consultas
   useEffect(() => {
@@ -57,6 +69,12 @@ export function ConsultasPage() {
   const formatDate = (dateTimestamp: any) => {
     const date = toDate(dateTimestamp);
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Handler para ver detalle
+  const handleVerDetalle = (consulta: Consulta) => {
+    setSelectedConsulta(consulta);
+    setIsDetalleOpen(true);
   };
 
   return (
@@ -134,7 +152,11 @@ export function ConsultasPage() {
                       <div className="text-xs text-muted-foreground truncate">{consulta.diagnostico}</div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleVerDetalle(consulta)}
+                      >
                         <FileText className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -145,6 +167,15 @@ export function ConsultasPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Diálogo de Detalle */}
+      {selectedConsulta && (
+        <ConsultaDetalleDialog 
+          consulta={selectedConsulta}
+          open={isDetalleOpen}
+          onOpenChange={setIsDetalleOpen}
+        />
+      )}
     </div>
   );
 }
