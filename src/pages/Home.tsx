@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Loader2,
   ClipboardList,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
 import { ConsultasChart } from "../components/ConsultasChart";
@@ -59,9 +60,9 @@ export default function Home() {
         // 1. Pacientes Activos (Global o Personal según rol)
         let qPacientes;
         if (esAdmin) {
-           qPacientes = query(collection(db, "pacientes"), where("estado", "==", "ACTIVO"));
+            qPacientes = query(collection(db, "pacientes"), where("estado", "==", "ACTIVO"));
         } else {
-           qPacientes = query(collection(db, "pacientes"), where("usuarioId", "==", user.uid), where("estado", "==", "ACTIVO"));
+            qPacientes = query(collection(db, "pacientes"), where("usuarioId", "==", user.uid), where("estado", "==", "ACTIVO"));
         }
         unsubs.push(onSnapshot(qPacientes, (snap) => {
           setStats(prev => ({ ...prev, pacientesActivos: snap.size }));
@@ -284,7 +285,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- SECCIÓN RECUPERADA: Módulos del Sistema --- */}
+      {/* --- SECCIÓN: Módulos del Sistema --- */}
       <div>
         <h2 className="text-foreground mb-6 font-medium text-lg">Módulos del Sistema</h2>
         
@@ -438,6 +439,32 @@ export default function Home() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* --- NUEVO: REPORTE DE GESTANTES --- */}
+          <Card className="hover:shadow-xl transition-all border-border/50 group cursor-pointer" onClick={() => navigate('/reportes/gestantes')}>
+            <CardHeader>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-gradient-to-br from-teal-100 to-emerald-100 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                  <FileSpreadsheet className="w-7 h-7 text-teal-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle>Reporte Gestantes</CardTitle>
+                  <Badge variant="outline" className="mt-1 border-teal-200 text-teal-700 bg-teal-50">Riesgo / EG</Badge>
+                </div>
+              </div>
+              <CardDescription>Monitoreo de edad gestacional y riesgos</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-between group/btn hover:bg-primary hover:text-primary-foreground hover:border-primary">
+                <span className="flex items-center">
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Ver Reporte
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+              </Button>
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     </>
