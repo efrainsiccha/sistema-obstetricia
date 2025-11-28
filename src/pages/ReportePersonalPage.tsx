@@ -48,7 +48,7 @@ export default function ReportePersonalPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Obtener Usuarios (Solo Obstetras para filtrar nombres)
+        // 1. Obtener Usuarios (Solo Obstetras)
         const usersSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "==", "OBSTETRA")));
         const userMap = new Map<string, string>(); // ID -> Nombre
         
@@ -66,8 +66,7 @@ export default function ReportePersonalPage() {
         // 4. Procesar Datos
         const conteo = new Map<string, {consultas: number, partos: number}>();
 
-        // Inicializar contadores para cada obstetra registrado
-        // CORRECCIÓN: Usamos un for..of sobre las llaves para no declarar variables sin uso
+        // Inicializar contadores
         for (const id of userMap.keys()) {
           conteo.set(id, { consultas: 0, partos: 0 });
         }
@@ -96,18 +95,28 @@ export default function ReportePersonalPage() {
         let bestDoc = "";
 
         conteo.forEach((val, key) => {
-          const nombre = userMap.get(key) || "Desconocido";
+          const nombreCompleto = userMap.get(key) || "Desconocido";
           const total = val.consultas + val.partos;
           
           if (total > maxTotal) {
             maxTotal = total;
-            bestDoc = nombre;
+            bestDoc = nombreCompleto;
           }
 
-          // Solo mostramos si tienen al menos 1 actividad para no llenar el gráfico de ceros
+          // --- CORRECCIÓN AQUÍ: LOGICA DE NOMBRE ---
+          // Quitamos prefijos como "Dra.", "Obsta.", "Lic." para el gráfico
+          // Y tomamos las primeras 2 palabras útiles (Nombre + Apellido)
+          const partes = nombreCompleto.split(" ");
+          // Filtramos palabras que tengan punto "." (títulos) o sean muy cortas al inicio
+          const partesUtiles = partes.filter(p => !p.includes("."));
+          
+          // Tomamos máximo 2 palabras (Ej: "Gaby Palacios")
+          const nombreGrafico = partesUtiles.slice(0, 2).join(" ") || nombreCompleto;
+
+          // Solo mostramos si tienen al menos 1 actividad
           if (total > 0) {
              formattedData.push({
-                nombre: nombre.split(" ")[0], // Solo primer nombre para que quepa en el gráfico
+                nombre: nombreGrafico, 
                 consultas: val.consultas,
                 partos: val.partos,
                 total: total
@@ -164,7 +173,10 @@ export default function ReportePersonalPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-800">{topPerformer?.nombre || "N/A"}</div>
+            {/* Aquí usamos el nombre completo original para dar crédito */}
+            <div className="text-2xl font-bold text-gray-800 line-clamp-1" title={topPerformer?.nombre}>
+                {topPerformer?.nombre || "N/A"}
+            </div>
             <p className="text-xs text-muted-foreground">{topPerformer?.total} atenciones totales</p>
           </CardContent>
         </Card>
@@ -176,12 +188,11 @@ export default function ReportePersonalPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Buscamos al que tiene más partos */}
             {(() => {
                const topPartos = [...dataProductividad].sort((a,b) => b.partos - a.partos)[0];
                return (
                  <>
-                   <div className="text-2xl font-bold text-gray-800">{topPartos?.nombre || "-"}</div>
+                   <div className="text-2xl font-bold text-gray-800 line-clamp-1">{topPartos?.nombre || "-"}</div>
                    <p className="text-xs text-muted-foreground">{topPartos?.partos || 0} nacimientos atendidos</p>
                  </>
                )
@@ -196,12 +207,11 @@ export default function ReportePersonalPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-             {/* Buscamos al que tiene más consultas */}
              {(() => {
                const topConsultas = [...dataProductividad].sort((a,b) => b.consultas - a.consultas)[0];
                return (
                  <>
-                   <div className="text-2xl font-bold text-gray-800">{topConsultas?.nombre || "-"}</div>
+                   <div className="text-2xl font-bold text-gray-800 line-clamp-1">{topConsultas?.nombre || "-"}</div>
                    <p className="text-xs text-muted-foreground">{topConsultas?.consultas || 0} pacientes atendidas</p>
                  </>
                )
@@ -258,7 +268,7 @@ export default function ReportePersonalPage() {
                           dataKey="partos"
                           nameKey="nombre"
                        >
-                          {/* CORRECCIÓN: Usamos _ para ignorar el primer argumento no usado */}
+                          {/* Usamos guión bajo para ignorar variable no usada */}
                           {dataProductividad.map((_, index) => (
                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
