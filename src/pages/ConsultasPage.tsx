@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, ArrowLeft, Loader2, FileText } from 'lucide-react';
+import { Plus, Search, Calendar, ArrowLeft, Loader2, FileText, Clock, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -7,18 +7,16 @@ import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"; 
 
-// Componentes Nuevos
 import { RegistrarConsultaDialog } from '../components/RegistrarConsultaDialog';
 import { ConsultaDetalleDialog } from '../components/ConsultaDetalleDialog';
 
-// Firebase
 import { db } from '../lib/firebaseConfig';
 import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { type Consulta } from '../types';
 
-// Helper fecha
 const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Date => {
   if (timestamp instanceof Date) return timestamp;
   return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
@@ -30,30 +28,23 @@ export function ConsultasPage() {
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Estados para el detalle
   const [selectedConsulta, setSelectedConsulta] = useState<Consulta | null>(null);
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
 
-  // Cargar Consultas con Filtro por Rol
   useEffect(() => {
     let unsubscribe: () => void;
-
     const setupListener = async () => {
       setIsLoading(true);
       try {
         const user = auth.currentUser;
         if (!user) return;
-
         const userDoc = await getDoc(doc(db, "usuarios", user.uid));
         const esAdmin = userDoc.data()?.rol === "ADMIN";
 
         let q;
         if (esAdmin) {
-          // Admin ve todo
           q = collection(db, "consultas");
         } else {
-          // Obstetra ve solo lo suyo
           q = query(collection(db, "consultas"), where("usuarioId", "==", user.uid));
         }
         
@@ -63,11 +54,11 @@ export function ConsultasPage() {
             ...doc.data()
           } as Consulta));
           
-          // Ordenamiento manual por fecha (cliente) para evitar errores de índices
+          // Ordenar: Futuras citas primero para la agenda, Pasadas para el historial
           list.sort((a, b) => {
             const dateA = toDate(a.fecha).getTime();
             const dateB = toDate(b.fecha).getTime();
-            return dateB - dateA;
+            return dateB - dateA; // Descendente por defecto
           });
           
           setConsultas(list);
@@ -83,23 +74,24 @@ export function ConsultasPage() {
         setIsLoading(false);
       }
     };
-
     setupListener();
     return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
-  // Filtro
   const filteredConsultas = consultas.filter(c => 
     c.paciente_nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.paciente_dni.includes(searchTerm)
   );
+
+  // Separamos las listas
+  const agenda = filteredConsultas.filter(c => c.estado_consulta === "PROGRAMADA");
+  const historial = filteredConsultas.filter(c => c.estado_consulta !== "PROGRAMADA"); 
 
   const formatDate = (dateTimestamp: any) => {
     const date = toDate(dateTimestamp);
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Handler para ver detalle
   const handleVerDetalle = (consulta: Consulta) => {
     setSelectedConsulta(consulta);
     setIsDetalleOpen(true);
@@ -114,7 +106,7 @@ export function ConsultasPage() {
           </Button>
         </div>
         <h1 className="text-primary mb-2">Gestión de Consultas</h1>
-        <p className="text-muted-foreground">Historial de atenciones médicas y controles.</p>
+        <p className="text-muted-foreground">Agenda de citas y registro de atenciones.</p>
       </div>
 
       <Card className="mb-6">
@@ -130,73 +122,129 @@ export function ConsultasPage() {
               />
             </div>
             <RegistrarConsultaDialog>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" /> Nueva Consulta
-              </Button>
+              <Button><Plus className="h-4 w-4 mr-2" /> Nueva Cita / Atención</Button>
             </RegistrarConsultaDialog>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Paciente</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Motivo / Diagnóstico</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-8 w-8 mx-auto animate-spin text-primary"/></TableCell></TableRow>
-              ) : filteredConsultas.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No hay consultas registradas.</TableCell></TableRow>
-              ) : (
-                filteredConsultas.map((consulta) => (
-                  <TableRow key={consulta.id}>
-                    <TableCell className="font-medium text-xs text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {formatDate(consulta.fecha)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{consulta.paciente_nombre_completo}</span>
-                        <span className="text-xs text-muted-foreground">DNI: {consulta.paciente_dni}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={consulta.tipo === 'PRENATAL' ? 'default' : 'secondary'}>
-                        {consulta.tipo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      <div className="font-medium truncate">{consulta.motivo}</div>
-                      <div className="text-xs text-muted-foreground truncate">{consulta.diagnostico}</div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleVerDetalle(consulta)}
-                      >
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="agenda" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="agenda" className="flex gap-2"><Clock className="h-4 w-4"/> Agenda / Programadas ({agenda.length})</TabsTrigger>
+          <TabsTrigger value="historia" className="flex gap-2"><CheckCircle className="h-4 w-4"/> Historial de Atenciones ({historial.length})</TabsTrigger>
+        </TabsList>
 
-      {/* Diálogo de Detalle */}
+        {/* TAB: AGENDA */}
+        <TabsContent value="agenda">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha Programada</TableHead>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-8 w-8 mx-auto animate-spin text-primary"/></TableCell></TableRow>
+                  ) : agenda.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No hay citas programadas.</TableCell></TableRow>
+                  ) : (
+                    agenda.map((consulta) => (
+                      <TableRow key={consulta.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2 text-blue-600">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(consulta.fecha)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{consulta.paciente_nombre_completo}</span>
+                            <span className="text-xs text-muted-foreground">DNI: {consulta.paciente_dni}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {consulta.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{consulta.motivo}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => handleVerDetalle(consulta)}>
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB: HISTORIAL */}
+        <TabsContent value="historia">
+           <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha Realizada</TableHead>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Diagnóstico</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-8 w-8 mx-auto animate-spin text-primary"/></TableCell></TableRow>
+                  ) : historial.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No hay atenciones registradas.</TableCell></TableRow>
+                  ) : (
+                    historial.map((consulta) => (
+                      <TableRow key={consulta.id}>
+                        <TableCell className="font-medium text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(consulta.fecha)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{consulta.paciente_nombre_completo}</span>
+                            <span className="text-xs text-muted-foreground">DNI: {consulta.paciente_dni}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={consulta.tipo === 'PRENATAL' ? 'default' : 'secondary'}>
+                            {consulta.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate text-muted-foreground">
+                          {consulta.diagnostico || consulta.motivo}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => handleVerDetalle(consulta)}>
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
       {selectedConsulta && (
         <ConsultaDetalleDialog 
           consulta={selectedConsulta}

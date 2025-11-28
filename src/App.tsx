@@ -1,16 +1,17 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
-import { ConsultasPage } from "./pages/ConsultasPage";
-import PacientesPage from "./pages/PacientesPage";
-import { PartosPage } from "./pages/PartosPage";
-import ProgramasPage from "./pages/ProgramasPage";
-import DerivacionesPage from "./pages/DerivacionesPage";
-import DiagnosticosPage from "./pages/DiagnosticosPage";
 import AdminPage from "./pages/AdminPage"; 
-import PacienteDetallePage from "./pages/PacienteDetallePage"; 
+import PacientesPage from "./pages/PacientesPage";
+import ProgramasPage from "./pages/ProgramasPage";
+import PacienteDetallePage from "./pages/PacienteDetallePage";
+import ReporteObstetraPage from "./pages/ReporteObstetraPage";
+import { ConsultasPage } from "./pages/ConsultasPage";
+import { PartosPage } from "./pages/PartosPage";
+import { DerivacionesPage } from "./pages/DerivacionesPage";
+import { DiagnosticosPage } from "./pages/DiagnosticosPage";
 
-import Layout from "./components/Layout";
 
 export default function App() {
   return (
@@ -20,19 +21,22 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route element={<Layout />}>
+          
           <Route path="/home" element={<Home />} />
           <Route path="/admin" element={<AdminPage />} />
-          <Route path="/consultas" element={<ConsultasPage />} />
-          
+          <Route path="/reportes/obstetra" element={<ReporteObstetraPage />} />
+
           <Route path="/pacientes" element={<PacientesPage />} />
           <Route path="/pacientes/:id" element={<PacienteDetallePage />} />
           
+          <Route path="/consultas" element={<ConsultasPage />} />
           <Route path="/partos" element={<PartosPage />} />
           <Route path="/programas" element={<ProgramasPage />} />
+          
           <Route path="/derivaciones" element={<DerivacionesPage />} />
           <Route path="/diagnosticos" element={<DiagnosticosPage />} />
+          
         </Route>
-        
       </Routes>
     </Router>
   );

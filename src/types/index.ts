@@ -1,5 +1,3 @@
-// src/types/index.ts
-
 // 1. TIPO PROGRAMA
 export interface Programa {
   id: string; 
@@ -8,7 +6,7 @@ export interface Programa {
   estado: "ACTIVO" | "INACTIVO";
 }
 
-// 2. TIPO PACIENTE (Con Historia Clínica + usuarioId)
+// 2. TIPO PACIENTE
 export interface Patient {
   id: string; // DNI
   doc_identidad: string;
@@ -16,8 +14,6 @@ export interface Patient {
   apellidos: string;
   fecha_nacimiento: { seconds: number; nanoseconds: number } | Date;
   edad?: number; 
-  
-  // Datos Personales
   sexo: "F" | "M"; 
   grupo_sanguineo?: string; 
   telefono: string;
@@ -27,28 +23,24 @@ export interface Patient {
   sucursal_nombre: string;
   id_sucursal: string;
   estado: string;
-
-  // --- Historia Clínica (Nuevos Campos) ---
-  antecedentes_gestas?: number; // G
-  antecedentes_partos?: number; // P
-  antecedentes_abortos?: number; // A
-  antecedentes_cesareas?: number; // C
-  antecedentes_hijos_vivos?: number; // HV
   
+  // Historia Clínica
+  antecedentes_gestas?: number;
+  antecedentes_partos?: number;
+  antecedentes_abortos?: number;
+  antecedentes_cesareas?: number;
+  antecedentes_hijos_vivos?: number;
   antecedentes_personales?: string; 
   antecedentes_familiares?: string; 
   alergias?: string;
   medicacion_actual?: string;
-  
-  // Embarazo actual
   fum?: string; 
   fpp?: string; 
 
-  // --- Permisos ---
-  usuarioId?: string; // ID del obstetra que lo registró
+  usuarioId?: string;
 }
 
-// 3. TIPO PARTO (Con usuarioId)
+// 3. TIPO PARTO
 export interface Parto {
   id: string;
   paciente_nombres: string;
@@ -63,12 +55,10 @@ export interface Parto {
   talla_recien_nacido: number; 
   sexo_recien_nacido: "M" | "F";
   observaciones?: string; 
-  
-  // Permisos
   usuarioId?: string;
 }
 
-// 4. TIPO CONSULTA (Con usuarioId)
+// 4. TIPO CONSULTA
 export interface Consulta {
   id: string;
   id_paciente: string;
@@ -76,6 +66,7 @@ export interface Consulta {
   paciente_dni: string;
   fecha: { seconds: number; nanoseconds: number } | Date;
   tipo: "PRENATAL" | "POSTPARTO" | "PLANIFICACION" | "OTRO";
+  estado_consulta: "PROGRAMADA" | "ATENDIDA" | "CANCELADA"; 
   motivo: string;
   presion_arterial?: string;
   peso?: number;
@@ -84,7 +75,33 @@ export interface Consulta {
   diagnostico: string;
   indicaciones: string;
   creado_en?: any;
-  
-  // Permisos
+  usuarioId?: string;
+}
+
+// 5. TIPO DERIVACIÓN
+export interface Derivacion {
+  id: string;
+  id_paciente: string;
+  paciente_nombre: string;
+  paciente_dni: string;
+  especialidad: string;
+  motivo: string;
+  prioridad: "ALTA" | "MEDIA" | "BAJA";
+  fecha: { seconds: number; nanoseconds: number } | Date;
+  estado: "PENDIENTE" | "COMPLETADA";
+  observaciones?: string;
+  usuarioId?: string;
+}
+
+// 6. TIPO DIAGNÓSTICO
+export interface Diagnostico {
+  id: string;
+  id_paciente: string;
+  paciente_nombre: string;
+  paciente_dni: string;
+  cie10: string; 
+  descripcion: string;
+  fecha: { seconds: number; nanoseconds: number } | Date;
+  tipo: "PRESUNTIVO" | "DEFINITIVO";
   usuarioId?: string;
 }
