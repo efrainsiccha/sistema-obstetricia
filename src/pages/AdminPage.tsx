@@ -1,5 +1,3 @@
-// src/pages/AdminPage.tsx
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -30,6 +28,8 @@ import { Badge } from "../components/ui/badge";
 import { ArrowLeft, UserPlus, Users, Baby, ClipboardList, MapPin, Phone, CreditCard, Clock, Mail, Loader2 } from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+
+import { EditarUsuarioDialog } from "../components/EditarUsuarioDialog";
 
 // --- Definición de Tipos ---
 
@@ -526,20 +526,21 @@ export default function AdminPage() {
                     <TableHead>Credenciales</TableHead>
                     <TableHead>Contacto</TableHead>
                     <TableHead>Ubicación</TableHead>
-                    <TableHead className="text-right">Estado</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8">
                         <Loader2 className="h-8 w-8 mx-auto mb-2 text-primary animate-spin" />
                         Cargando...
                       </TableCell>
                     </TableRow>
                   ) : usuarios.length === 0 ? (
                      <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">No hay usuarios.</TableCell>
+                      <TableCell colSpan={6} className="text-center py-8">No hay usuarios.</TableCell>
                     </TableRow>
                   ) : (
                     usuarios.map((user) => (
@@ -591,10 +592,13 @@ export default function AdminPage() {
                             {user.sucursal || "Sin asignar"}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <Badge variant={user.estado === "ACTIVO" ? "default" : "outline"}>
                             {user.estado}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <EditarUsuarioDialog user={user} sucursales={listaSucursales} />
                         </TableCell>
                       </TableRow>
                     ))

@@ -12,6 +12,7 @@ import { ConsultasPage } from "./pages/ConsultasPage";
 import { PartosPage } from "./pages/PartosPage";
 import { DerivacionesPage } from "./pages/DerivacionesPage";
 import { DiagnosticosPage } from "./pages/DiagnosticosPage";
+import ProgramaDetallePage from "./pages/ProgramaDetallePage";
 
 export default function App() {
   return (
@@ -32,7 +33,10 @@ export default function App() {
           
           <Route path="/consultas" element={<ConsultasPage />} />
           <Route path="/partos" element={<PartosPage />} />
+          
           <Route path="/programas" element={<ProgramasPage />} />
+          <Route path="/programas/:id" element={<ProgramaDetallePage />} />
+
           <Route path="/derivaciones" element={<DerivacionesPage />} />
           <Route path="/diagnosticos" element={<DiagnosticosPage />} />
         </Route>
