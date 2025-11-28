@@ -31,7 +31,8 @@ import { Loader2 } from "lucide-react";
 
 // Firebase
 import { db } from "../lib/firebaseConfig";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import type { Patient } from "../types";
 
 // --- Tipos Auxiliares para el Reporte ---
@@ -56,13 +57,35 @@ export default function ReporteGestantesPage() {
   // 1. Cargar y Procesar Datos
   useEffect(() => {
     const fetchGestantes = async () => {
+      setIsLoading(true);
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        // Traemos solo pacientes mujeres y activas
-        const q = query(
-          collection(db, "pacientes"), 
+        // A. Verificar Rol del Usuario
+        const userDocRef = doc(db, "usuarios", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        const userData = userDocSnap.data();
+        const esAdmin = userData?.rol === "ADMIN";
+
+        // B. Construir Query Dinámica
+        // Reglas base: Mujer y Activa
+        const constraints = [
           where("sexo", "==", "F"),
           where("estado", "==", "ACTIVO")
-        );
+        ];
+
+        // Regla de Rol: Si NO es admin, solo ve sus propios pacientes
+        if (!esAdmin) {
+          constraints.push(where("usuarioId", "==", user.uid));
+        }
+
+        const q = query(collection(db, "pacientes"), ...constraints);
         
         const snapshot = await getDocs(q);
         const hoy = new Date();
@@ -91,7 +114,6 @@ export default function ReporteGestantesPage() {
             // C1. Edad Materna
             let edad = 0;
             if (data.fecha_nacimiento) {
-               // Manejo seguro de Timestamp o Date
                const fechaNac = (data.fecha_nacimiento as any).seconds 
                  ? new Date((data.fecha_nacimiento as any).seconds * 1000)
                  : new Date(data.fecha_nacimiento as any);
@@ -105,10 +127,10 @@ export default function ReporteGestantesPage() {
             if ((data.antecedentes_cesareas || 0) > 0) riesgos.push("Cesárea Previa");
             if ((data.antecedentes_abortos || 0) > 0) riesgos.push("Abortos Previos");
 
-            // Construir objeto (CORREGIDO EL ORDEN DEL SPREAD)
+            // Construir objeto (Orden correcto para no sobreescribir ID)
             processedData.push({
-              ...data,        // 1. Primero esparcimos los datos originales
-              id: doc.id,     // 2. Luego aseguramos que el ID sea el del documento
+              ...data,
+              id: doc.id, 
               semanasGestacion: semanas,
               trimestre: trim,
               factoresRiesgo: riesgos,
@@ -133,7 +155,7 @@ export default function ReporteGestantesPage() {
     fetchGestantes();
   }, []);
 
-  // 2. Filtrado Dinámico
+  // 2. Filtrado Dinámico (UI)
   useEffect(() => {
     let result = gestantes;
 
