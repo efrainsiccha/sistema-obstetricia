@@ -11,51 +11,84 @@ import { RegistrarPartoDialog } from '../components/RegistrarPartoDialog';
 import { DetallePartoDialog } from '../components/DetallePartoDialog';
 import { toast } from 'sonner';
 
-// Firebase y Tipos
+// Firebase
 import { db } from '../lib/firebaseConfig';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { type Parto } from '../types'; // Importamos el tipo desde 'types'
+import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { type Parto } from '../types'; 
 
-// Helper para convertir Timestamps
+// Helper de fecha
 const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Date => {
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
+  if (timestamp instanceof Date) return timestamp;
   return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
 };
 
 export function PartosPage() {
   const navigate = useNavigate();
-  const [partos, setPartos] = useState<Parto[]>([]); // Estado para datos reales
+  const auth = getAuth();
+  const [partos, setPartos] = useState<Parto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('TODOS');
   const [selectedParto, setSelectedParto] = useState<Parto | null>(null);
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
 
-  // LEER (R) - Cargar partos de Firestore
+  // LEER Partos con filtro por Rol (Admin ve todo, Obstetra ve lo suyo)
   useEffect(() => {
-    setIsLoading(true);
-    // Ordenamos por fecha de parto, el más reciente primero
-    const q = query(collection(db, "partos"), orderBy("fecha_parto", "desc"));
+    let unsubscribe: () => void;
+    
+    const setupListener = async () => {
+      setIsLoading(true);
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const partosList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Parto));
-      setPartos(partosList);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Error al cargar partos: ", error);
-      toast.error("Error al cargar los registros de partos.");
-      setIsLoading(false);
-    });
+        // Verificamos el rol
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        const esAdmin = userDoc.data()?.rol === "ADMIN";
 
-    return () => unsubscribe(); // Limpiar el listener
+        let q;
+        if (esAdmin) {
+          // Admin ve todo
+          q = collection(db, "partos");
+        } else {
+          // Obstetra ve solo lo suyo
+          q = query(collection(db, "partos"), where("usuarioId", "==", user.uid));
+        }
+
+        unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const partosList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Parto));
+          
+          // Ordenamiento manual (cliente) para evitar errores de índices
+          partosList.sort((a, b) => {
+            const dateA = toDate(a.fecha_parto).getTime();
+            const dateB = toDate(b.fecha_parto).getTime();
+            return dateB - dateA; // Más reciente primero
+          });
+
+          setPartos(partosList);
+          setIsLoading(false);
+        }, (error) => {
+          console.error(error);
+          toast.error("Error al cargar partos.");
+          setIsLoading(false);
+        });
+
+      } catch (error) {
+        console.error(error);
+        setIsLoading(false);
+      }
+    };
+    
+    setupListener();
+    
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
-  // Filtrar partos
+  // Filtrar partos (búsqueda local)
   const partosFiltrados = partos.filter(parto => {
     const matchSearch = 
       parto.paciente_nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,29 +104,23 @@ export function PartosPage() {
     setSelectedParto(parto);
     setIsDetalleOpen(true);
   };
+
   const getTipoBadgeVariant = (tipo: string) => {
     switch (tipo) {
-      case 'VAGINAL':
-        return 'default';
-      case 'CESAREA':
-        return 'secondary';
-      default:
-        return 'outline';
+      case 'VAGINAL': return 'default';
+      case 'CESAREA': return 'secondary';
+      default: return 'outline';
     }
   };
 
-  const formatDate = (dateTimestamp: { seconds: number; nanoseconds: number } | Date) => {
-    const date = toDate(dateTimestamp); // Usamos el helper
+  const formatDate = (dateTimestamp: any) => {
+    const date = toDate(dateTimestamp);
     return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
   };
 
-  // Estadísticas (ahora con datos reales)
+  // Estadísticas (Calculadas con datos reales)
   const totalPartos = partos.length;
   const partosVaginales = partos.filter(p => p.tipo_parto === 'VAGINAL').length;
   const partosCesarea = partos.filter(p => p.tipo_parto === 'CESAREA').length;
@@ -102,64 +129,37 @@ export function PartosPage() {
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/home')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver al Inicio
+          <Button variant="outline" size="sm" onClick={() => navigate('/home')} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Volver al Inicio
           </Button>
         </div>
         <h1 className="text-primary mb-2">Gestión de Partos</h1>
-        <p className="text-muted-foreground">
-          Registro y seguimiento de partos atendidos en el centro de obstetricia
-        </p>
+        <p className="text-muted-foreground">Registro y seguimiento de partos atendidos.</p>
       </div>
 
-      {/* Estadísticas (ahora usan datos reales) */}
+      {/* Tarjetas de Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Total de Partos</CardDescription>
-            <CardTitle className="text-primary">{totalPartos}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Partos Vaginales</CardDescription>
-            <CardTitle className="text-green-600">{partosVaginales}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Cesáreas</CardDescription>
-            <CardTitle className="text-blue-600">{partosCesarea}</CardTitle>
-          </CardHeader>
-        </Card>
+        <Card><CardHeader className="pb-3"><CardDescription>Total de Partos</CardDescription><CardTitle className="text-primary">{totalPartos}</CardTitle></CardHeader></Card>
+        <Card><CardHeader className="pb-3"><CardDescription>Partos Vaginales</CardDescription><CardTitle className="text-green-600">{partosVaginales}</CardTitle></CardHeader></Card>
+        <Card><CardHeader className="pb-3"><CardDescription>Cesáreas</CardDescription><CardTitle className="text-blue-600">{partosCesarea}</CardTitle></CardHeader></Card>
       </div>
 
+      {/* Barra de Herramientas */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex gap-4 items-center">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
-              <Input
-                placeholder="Buscar por nombre o DNI de paciente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ paddingLeft: '2.5rem' }}
-                className="w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
+              <Input 
+                placeholder="Buscar por nombre o DNI..." 
+                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} 
+                style={{ paddingLeft: '2.5rem' }} className="w-full" 
               />
             </div>
             <div className="w-[200px]">
               <Select value={filterTipo} onValueChange={setFilterTipo}>
-                <SelectTrigger className="w-full">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                <SelectTrigger className="w-full"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-white">
                   <SelectItem value="TODOS">Todos los tipos</SelectItem>
                   <SelectItem value="VAGINAL">Vaginal</SelectItem>
                   <SelectItem value="CESAREA">Cesárea</SelectItem>
@@ -167,24 +167,20 @@ export function PartosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="shrink-0">
-              <RegistrarPartoDialog>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Registrar Parto
-                </Button>
-              </RegistrarPartoDialog>
-            </div>
+            
+            {/* El Dialog ya maneja su propio botón y lógica */}
+            <RegistrarPartoDialog>
+              <Button><Plus className="h-4 w-4 mr-2" /> Registrar Parto</Button>
+            </RegistrarPartoDialog>
           </div>
         </CardContent>
       </Card>
 
+      {/* Tabla de Datos */}
       <Card>
         <CardHeader>
           <CardTitle>Registro de Partos</CardTitle>
-          <CardDescription>
-            {partosFiltrados.length} {partosFiltrados.length === 1 ? 'parto encontrado' : 'partos encontrados'}
-          </CardDescription>
+          <CardDescription>{partosFiltrados.length} encontrados</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -203,25 +199,15 @@ export function PartosPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                      <Loader2 className="h-8 w-8 mx-auto mb-2 text-pink-500 animate-spin" />
-                      Cargando registros...
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8"><Loader2 className="h-8 w-8 mx-auto animate-spin text-primary"/></TableCell></TableRow>
                 ) : partosFiltrados.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No se encontraron partos con los filtros aplicados
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No se encontraron partos.</TableCell></TableRow>
                 ) : (
                   partosFiltrados.map((parto) => (
                     <TableRow key={parto.id} className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          {/* Usamos los campos denormalizados */}
                           <span>{parto.paciente_nombres} {parto.paciente_apellidos}</span>
                         </div>
                       </TableCell>
@@ -229,36 +215,18 @@ export function PartosPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {/* Formateamos el Timestamp */}
                           {formatDate(parto.fecha_parto)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getTipoBadgeVariant(parto.tipo_parto)}>
-                          {parto.tipo_parto}
-                        </Badge>
+                        <Badge variant={getTipoBadgeVariant(parto.tipo_parto)}>{parto.tipo_parto}</Badge>
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {parto.lugar}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={parto.apgar1 >= 7 ? 'text-green-600' : 'text-orange-600'}>
-                          {parto.apgar1}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={parto.apgar5 >= 7 ? 'text-green-600' : 'text-orange-600'}>
-                          {parto.apgar5}
-                        </span>
-                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">{parto.lugar}</TableCell>
+                      <TableCell className="text-center"><span className={parto.apgar1 >= 7 ? 'text-green-600' : 'text-orange-600'}>{parto.apgar1}</span></TableCell>
+                      <TableCell className="text-center"><span className={parto.apgar5 >= 7 ? 'text-green-600' : 'text-orange-600'}>{parto.apgar5}</span></TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleVerDetalle(parto)}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Ver Detalle
+                        <Button variant="outline" size="sm" onClick={() => handleVerDetalle(parto)}>
+                          <FileText className="h-4 w-4 mr-2" /> Ver Detalle
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -270,7 +238,6 @@ export function PartosPage() {
         </CardContent>
       </Card>
 
-      {/* Diálogo de detalles */}
       {selectedParto && (
         <DetallePartoDialog
           parto={selectedParto}

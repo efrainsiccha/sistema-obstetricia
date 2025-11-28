@@ -12,8 +12,8 @@ import { toast } from 'sonner';
 // Firebase
 import { db } from '../lib/firebaseConfig';
 import { collection, getDocs, Timestamp, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth'; 
 
-// Componentes de Formulario
 import {
   Form,
   FormControl,
@@ -22,8 +22,6 @@ import {
   FormLabel,
   FormMessage,
 } from "./ui/form";
-
-// --- Tipos y Esquemas ---
 
 const patientSchema = z.object({
   doc_identidad: z.string().min(8, "DNI debe tener 8 dígitos").max(15, "No debe exceder 15 dígitos"),
@@ -48,11 +46,10 @@ interface Sucursal {
   nombre: string;
 }
 
-// --- Componente ---
-
 export function PatientRegistrationForm() {
   const [open, setOpen] = useState(false);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const auth = getAuth(); // Obtenemos la instancia de autenticación
 
   const form = useForm<PatientFormData>({
     resolver: zodResolver(patientSchema),
@@ -85,11 +82,15 @@ export function PatientRegistrationForm() {
   }, []);
 
   const onSubmit = async (data: PatientFormData) => {
+    // Verificamos que haya un usuario logueado (seguridad extra)
+    if (!auth.currentUser) {
+      toast.error("No hay sesión activa. Recarga la página.");
+      return;
+    }
+
     try {
-      // 1. Referencia al documento usando el DNI como ID
       const pacienteRef = doc(db, "pacientes", data.doc_identidad);
       
-      // 2. Verificar si ya existe
       const docSnap = await getDoc(pacienteRef);
       if (docSnap.exists()) {
         toast.error(`Ya existe una paciente registrada con el DNI ${data.doc_identidad}`);
@@ -98,7 +99,6 @@ export function PatientRegistrationForm() {
 
       const sucursalSeleccionada = sucursales.find(s => s.id === data.id_sucursal);
       
-      // 3. Guardar usando setDoc (porque definimos nosotros el ID)
       await setDoc(pacienteRef, {
         doc_identidad: data.doc_identidad,
         nombres: data.nombres,
@@ -114,6 +114,8 @@ export function PatientRegistrationForm() {
         sucursal_nombre: sucursalSeleccionada?.nombre || 'Desconocida',
         estado: 'ACTIVO',
         creado_en: Timestamp.now(),
+        // ¡AQUÍ ESTÁ LA CLAVE! Guardamos el ID de quien registra
+        usuarioId: auth.currentUser.uid 
       });
 
       toast.success('Paciente registrada exitosamente');
@@ -144,9 +146,9 @@ export function PatientRegistrationForm() {
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
-            
-            {/* Sección 1: Identificación y Datos Básicos */}
-            <div>
+            {/* ... (El resto del formulario es idéntico, no cambia nada visualmente) ... */}
+            {/* ... (Mantén todo el JSX que ya tenías dentro del return) ... */}
+             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">Datos Personales</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
@@ -261,7 +263,6 @@ export function PatientRegistrationForm() {
               </div>
             </div>
 
-            {/* Sección 2: Contacto y Ubicación */}
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">Contacto y Ubicación</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

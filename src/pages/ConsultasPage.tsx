@@ -1,11 +1,7 @@
-// src/pages/ConsultasPage.tsx
-
 import { useState, useEffect } from 'react';
-// CORREGIDO: Eliminado 'User'
 import { Plus, Search, Calendar, ArrowLeft, Loader2, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-// CORREGIDO: Eliminados CardHeader, CardTitle, CardDescription
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -14,13 +10,12 @@ import { toast } from 'sonner';
 
 // Componentes Nuevos
 import { RegistrarConsultaDialog } from '../components/RegistrarConsultaDialog';
-// Importamos el diálogo de detalle (asegúrate de que el archivo exista)
 import { ConsultaDetalleDialog } from '../components/ConsultaDetalleDialog';
 
 // Firebase
 import { db } from '../lib/firebaseConfig';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-// Importamos el tipo desde la carpeta correcta
+import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { type Consulta } from '../types';
 
 // Helper fecha
@@ -31,6 +26,7 @@ const toDate = (timestamp: { seconds: number; nanoseconds: number } | Date): Dat
 
 export function ConsultasPage() {
   const navigate = useNavigate();
+  const auth = getAuth();
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,25 +35,57 @@ export function ConsultasPage() {
   const [selectedConsulta, setSelectedConsulta] = useState<Consulta | null>(null);
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
 
-  // Cargar Consultas
+  // Cargar Consultas con Filtro por Rol
   useEffect(() => {
-    setIsLoading(true);
-    const q = query(collection(db, "consultas"), orderBy("fecha", "desc"));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const list = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Consulta));
-      setConsultas(list);
-      setIsLoading(false);
-    }, (error) => {
-      console.error(error);
-      toast.error("Error al cargar consultas");
-      setIsLoading(false);
-    });
+    let unsubscribe: () => void;
 
-    return () => unsubscribe();
+    const setupListener = async () => {
+      setIsLoading(true);
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        const esAdmin = userDoc.data()?.rol === "ADMIN";
+
+        let q;
+        if (esAdmin) {
+          // Admin ve todo
+          q = collection(db, "consultas");
+        } else {
+          // Obstetra ve solo lo suyo
+          q = query(collection(db, "consultas"), where("usuarioId", "==", user.uid));
+        }
+        
+        unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const list = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Consulta));
+          
+          // Ordenamiento manual por fecha (cliente) para evitar errores de índices
+          list.sort((a, b) => {
+            const dateA = toDate(a.fecha).getTime();
+            const dateB = toDate(b.fecha).getTime();
+            return dateB - dateA;
+          });
+          
+          setConsultas(list);
+          setIsLoading(false);
+        }, (error) => {
+          console.error(error);
+          toast.error("Error al cargar consultas");
+          setIsLoading(false);
+        });
+
+      } catch (error) {
+        console.error(error);
+        setIsLoading(false);
+      }
+    };
+
+    setupListener();
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
   // Filtro

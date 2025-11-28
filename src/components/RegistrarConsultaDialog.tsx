@@ -1,5 +1,3 @@
-// src/components/RegistrarConsultaDialog.tsx
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,13 +15,13 @@ import { Separator } from './ui/separator';
 // Firebase
 import { db } from '../lib/firebaseConfig';
 import { collection, addDoc, Timestamp, getDocs, query } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { type Patient } from '../types';
 
 interface RegistrarConsultaDialogProps {
   children: React.ReactNode;
 }
 
-// Esquema de validación
 const consultaSchema = z.object({
   id_paciente: z.string().min(1, "Debe seleccionar una paciente"),
   fecha: z.string().min(1, "Fecha requerida"),
@@ -33,7 +31,7 @@ const consultaSchema = z.object({
   presion_arterial: z.string().optional(),
   peso: z.string().min(1, "Peso requerido"),
   talla: z.string().min(1, "Talla requerida"),
-  edad_gestacional: z.string().optional(), // Ej: "32 semanas"
+  edad_gestacional: z.string().optional(), 
   diagnostico: z.string().min(3, "Diagnóstico requerido"),
   indicaciones: z.string().optional(),
 });
@@ -44,12 +42,13 @@ export function RegistrarConsultaDialog({ children }: RegistrarConsultaDialogPro
   const [open, setOpen] = useState(false);
   const [pacientes, setPacientes] = useState<Patient[]>([]);
   const [isLoadingLists, setIsLoadingLists] = useState(false);
+  const auth = getAuth(); // <-- Obtenemos usuario actual
 
   const form = useForm<ConsultaFormData>({
     resolver: zodResolver(consultaSchema),
     defaultValues: {
       id_paciente: '',
-      fecha: new Date().toISOString().split('T')[0], // Fecha de hoy por defecto
+      fecha: new Date().toISOString().split('T')[0],
       hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
       tipo: 'PRENATAL',
       motivo: '',
@@ -62,7 +61,7 @@ export function RegistrarConsultaDialog({ children }: RegistrarConsultaDialogPro
     },
   });
 
-  // Cargar lista de pacientes para el buscador
+  // Cargar lista de pacientes
   useEffect(() => {
     const fetchPacientes = async () => {
       setIsLoadingLists(true);
@@ -80,6 +79,11 @@ export function RegistrarConsultaDialog({ children }: RegistrarConsultaDialogPro
   }, [open]);
 
   const onSubmit = async (data: ConsultaFormData) => {
+    if (!auth.currentUser) {
+      toast.error("Sesión no válida.");
+      return;
+    }
+
     try {
       const fechaHora = new Date(`${data.fecha}T${data.hora}`);
       const pacienteSelect = pacientes.find(p => p.id === data.id_paciente);
@@ -98,6 +102,8 @@ export function RegistrarConsultaDialog({ children }: RegistrarConsultaDialogPro
         diagnostico: data.diagnostico,
         indicaciones: data.indicaciones || '',
         creado_en: Timestamp.now(),
+        // Guardamos la propiedad
+        usuarioId: auth.currentUser.uid 
       });
 
       toast.success("Consulta registrada exitosamente");

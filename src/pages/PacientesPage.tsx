@@ -9,45 +9,74 @@ import { Button } from '../components/ui/button';
 
 // Firebase
 import { db } from '../lib/firebaseConfig';
-import { collection, onSnapshot } from 'firebase/firestore';
-
+import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { type Patient } from '../types'; 
 
 function PacientesPage() {
   const navigate = useNavigate();
+  const auth = getAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [sucursalesCount, setSucursalesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Efecto para leer pacientes (Con filtro por Rol)
   useEffect(() => {
-    setIsLoading(true);
-    const patientsCollection = collection(db, "pacientes");
-    
-    const unsubscribe = onSnapshot(patientsCollection, (querySnapshot) => {
-      const patientsList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Patient));
-      setPatients(patientsList);
-      setIsLoading(false);
-    }, (error: any) => { 
-      console.error("Error al cargar pacientes: ", error);
-      toast.error("Error al cargar pacientes.");
-      setIsLoading(false);
-    });
+    let unsubscribe: () => void;
 
-    return () => unsubscribe();
+    const setupListener = async () => {
+      setIsLoading(true);
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // 1. Averiguar el rol del usuario actual
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        const userData = userDoc.data();
+        const esAdmin = userData?.rol === "ADMIN";
+
+        // 2. Definir la consulta
+        let q;
+        if (esAdmin) {
+          // Si es Admin, ve TODO
+          q = collection(db, "pacientes");
+        } else {
+          // Si es Obstetra, ve SOLO lo suyo
+          q = query(collection(db, "pacientes"), where("usuarioId", "==", user.uid));
+        }
+        
+        // 3. Escuchar cambios
+        unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const patientsList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Patient));
+          setPatients(patientsList);
+          setIsLoading(false);
+        }, (error) => {
+          console.error("Error al cargar pacientes: ", error);
+          toast.error("Error al cargar pacientes.");
+          setIsLoading(false);
+        });
+
+      } catch (error) {
+        console.error(error);
+        setIsLoading(false);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
-  // Efecto para contar sucursales
+  // Contar sucursales (esto es general, no necesita filtro)
   useEffect(() => {
-    const sucursalesCollection = collection(db, "sucursales");
-    const unsubscribe = onSnapshot(sucursalesCollection, (querySnapshot) => {
-      setSucursalesCount(querySnapshot.size);
-    }, (error: any) => {
-      console.error("Error al contar sucursales: ", error);
+    const unsubscribe = onSnapshot(collection(db, "sucursales"), (snap) => {
+      setSucursalesCount(snap.size);
     });
-    
     return () => unsubscribe();
   }, []);
 

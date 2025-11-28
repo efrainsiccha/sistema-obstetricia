@@ -21,10 +21,12 @@ import { useNavigate } from "react-router-dom";
 
 // Firebase
 import { db } from "../lib/firebaseConfig";
-import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 export default function Home() {
   const navigate = useNavigate();
+  const auth = getAuth();
   const [isLoading, setIsLoading] = useState(true); 
 
   // Estados para los contadores reales
@@ -42,81 +44,95 @@ export default function Home() {
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    setIsLoading(true);
+    let unsubs: (() => void)[] = [];
 
-    // 1. Escuchar Pacientes Activos
-    const qPacientes = query(collection(db, "pacientes"), where("estado", "==", "ACTIVO"));
-    const unsubPacientes = onSnapshot(qPacientes, (snap) => {
-      setStats(prev => ({ ...prev, pacientesActivos: snap.size }));
-    });
+    const setupListeners = async () => {
+      setIsLoading(true);
+      const user = auth.currentUser;
+      if (!user) return;
 
-    // 2. Escuchar Consultas (Hoy, Pendientes y Gráfico)
-    const unsubConsultas = onSnapshot(collection(db, "consultas"), (snap) => {
-      const now = new Date();
-      const todayStr = now.toDateString(); 
+      try {
+        // Averiguar rol para filtrar datos globales o personales en el dashboard
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        const esAdmin = userDoc.data()?.rol === "ADMIN";
 
-      let hoyCount = 0;
-      let pendientesCount = 0;
-
-      // Preparar datos para el gráfico (Últimos 7 días)
-      const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date();
-        d.setDate(now.getDate() - 6 + i); // De hace 6 días hasta hoy
-        return {
-          dateObj: d,
-          name: d.toLocaleDateString('es-ES', { weekday: 'short' }), // "lun", "mar"
-          fullDate: d.toDateString(),
-          Prenatal: 0,
-          Postparto: 0,
-          Planificacion: 0,
-          Otro: 0
-        };
-      });
-
-      snap.forEach(doc => {
-        const data = doc.data();
-        const fechaTimestamp = data.fecha as Timestamp;
-        const fecha = fechaTimestamp.toDate();
-        const tipo = data.tipo || "OTRO";
-
-        // Contadores
-        if (fecha.toDateString() === todayStr) {
-          hoyCount++;
+        // 1. Pacientes Activos (Global o Personal según rol)
+        let qPacientes;
+        if (esAdmin) {
+           qPacientes = query(collection(db, "pacientes"), where("estado", "==", "ACTIVO"));
+        } else {
+           qPacientes = query(collection(db, "pacientes"), where("usuarioId", "==", user.uid), where("estado", "==", "ACTIVO"));
         }
-        if (fecha > now) {
-          pendientesCount++;
+        unsubs.push(onSnapshot(qPacientes, (snap) => {
+          setStats(prev => ({ ...prev, pacientesActivos: snap.size }));
+        }));
+
+        // 2. Consultas (Hoy, Pendientes y Gráfico)
+        let qConsultas;
+        if (esAdmin) {
+          qConsultas = collection(db, "consultas");
+        } else {
+          qConsultas = query(collection(db, "consultas"), where("usuarioId", "==", user.uid));
         }
 
-        // Llenar gráfico
-        const dayData = last7Days.find(d => d.fullDate === fecha.toDateString());
-        if (dayData) {
-          if (tipo === "PRENATAL") dayData.Prenatal++;
-          else if (tipo === "POSTPARTO") dayData.Postparto++;
-          else if (tipo === "PLANIFICACION") dayData.Planificacion++;
-          else dayData.Otro++;
-        }
-      });
+        unsubs.push(onSnapshot(qConsultas, (snap) => {
+          const now = new Date();
+          const todayStr = now.toDateString(); 
+          let hoyCount = 0;
+          let pendientesCount = 0;
 
-      setStats(prev => ({ 
-        ...prev, 
-        consultasHoy: hoyCount, 
-        consultasPendientes: pendientesCount 
-      }));
-      
-      setChartData(last7Days);
-    });
+          // Preparar datos para el gráfico (Últimos 7 días)
+          const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            d.setDate(now.getDate() - 6 + i); 
+            return {
+              dateObj: d,
+              name: d.toLocaleDateString('es-ES', { weekday: 'short' }),
+              fullDate: d.toDateString(),
+              Prenatal: 0, Postparto: 0, Planificacion: 0, Otro: 0
+            };
+          });
 
-    // 3. Escuchar Derivaciones Urgentes
-    const qDerivaciones = query(collection(db, "derivaciones"), where("prioridad", "==", "ALTA"));
-    const unsubDerivaciones = onSnapshot(qDerivaciones, (snap) => {
-      setStats(prev => ({ ...prev, derivacionesUrgentes: snap.size }));
-      setIsLoading(false); 
-    });
+          snap.forEach(doc => {
+            const data = doc.data();
+            const fechaTimestamp = data.fecha as Timestamp;
+            const fecha = fechaTimestamp.toDate();
+            const tipo = data.tipo || "OTRO";
+
+            if (fecha.toDateString() === todayStr) hoyCount++;
+            if (fecha > now) pendientesCount++;
+
+            // Llenar gráfico
+            const dayData = last7Days.find(d => d.fullDate === fecha.toDateString());
+            if (dayData) {
+              if (tipo === "PRENATAL") dayData.Prenatal++;
+              else if (tipo === "POSTPARTO") dayData.Postparto++;
+              else if (tipo === "PLANIFICACION") dayData.Planificacion++;
+              else dayData.Otro++;
+            }
+          });
+
+          setStats(prev => ({ ...prev, consultasHoy: hoyCount, consultasPendientes: pendientesCount }));
+          setChartData(last7Days);
+        }));
+
+        // 3. Derivaciones (Dejamos global las urgentes para que todos estén atentos)
+        const qDerivaciones = query(collection(db, "derivaciones"), where("prioridad", "==", "ALTA"));
+        unsubs.push(onSnapshot(qDerivaciones, (snap) => {
+          setStats(prev => ({ ...prev, derivacionesUrgentes: snap.size }));
+          setIsLoading(false); 
+        }));
+
+      } catch (error) {
+        console.error(error);
+        setIsLoading(false);
+      }
+    };
+
+    setupListeners();
 
     return () => {
-      unsubPacientes();
-      unsubConsultas();
-      unsubDerivaciones();
+      unsubs.forEach(u => u());
     };
   }, []);
 
@@ -268,7 +284,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Módulos del Sistema (Recuperados) */}
+      {/* --- SECCIÓN RECUPERADA: Módulos del Sistema --- */}
       <div>
         <h2 className="text-foreground mb-6 font-medium text-lg">Módulos del Sistema</h2>
         

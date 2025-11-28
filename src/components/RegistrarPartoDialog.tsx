@@ -1,5 +1,3 @@
-// src/components/RegistrarPartoDialog.tsx
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,24 +10,23 @@ import { Textarea } from './ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { Separator } from './ui/separator'; // Importamos un separador
+import { Separator } from './ui/separator';
 
 // Firebase
 import { db } from '../lib/firebaseConfig';
 import { collection, addDoc, Timestamp, getDocs, query } from 'firebase/firestore';
-import { type Patient } from '../types'; // Importamos el tipo Patient
+import { getAuth } from 'firebase/auth'; // <-- Importamos Auth
+import { type Patient } from '../types';
 
 interface RegistrarPartoDialogProps {
   children: React.ReactNode;
 }
 
-// Tipo para Sucursales
 interface Sucursal {
   id: string;
   nombre: string;
 }
 
-// Esquema de Zod (Corregido)
 const partoSchema = z.object({
   paciente_nombres: z.string().min(3, "Nombres requeridos"),
   paciente_apellidos: z.string().min(3, "Apellidos requeridos"),
@@ -42,7 +39,7 @@ const partoSchema = z.object({
   apgar5: z.string().min(1, "Requerido"),
   peso_recien_nacido: z.string().min(3, "Peso requerido (g)"),
   talla_recien_nacido: z.string().min(2, "Talla requerida (cm)"),
-  sexo_recien_nacido: z.enum(["M", "F"]), // <-- Corregido
+  sexo_recien_nacido: z.enum(["M", "F"]), 
   observaciones: z.string().optional(),
 });
 
@@ -50,11 +47,10 @@ type PartoFormData = z.infer<typeof partoSchema>;
 
 export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
   const [open, setOpen] = useState(false);
-  
-  // Estados para las listas
   const [pacientes, setPacientes] = useState<Patient[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [isLoadingLists, setIsLoadingLists] = useState(false);
+  const auth = getAuth(); // <-- Usuario actual
 
   const form = useForm<PartoFormData>({
     resolver: zodResolver(partoSchema),
@@ -75,26 +71,21 @@ export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
     },
   });
 
-  // Efecto para cargar Pacientes y Sucursales
   useEffect(() => {
     const fetchLists = async () => {
       setIsLoadingLists(true);
       try {
-        // Cargar Pacientes
         const pacQuery = query(collection(db, "pacientes"));
         const pacSnapshot = await getDocs(pacQuery);
         const pacList = pacSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Patient));
         setPacientes(pacList);
         
-        // Cargar Sucursales
         const sucQuery = query(collection(db, "sucursales"));
         const sucSnapshot = await getDocs(sucQuery);
         const sucList = sucSnapshot.docs.map(doc => ({ id: doc.id, nombre: doc.data().nombre } as Sucursal));
         setSucursales(sucList);
-
       } catch (error) {
         console.error("Error cargando listas: ", error);
-        toast.error("Error al cargar pacientes y sucursales.");
       }
       setIsLoadingLists(false);
     };
@@ -104,7 +95,6 @@ export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
     }
   }, [open]);
 
-  // Handler para autocompletar Paciente
   const handleSelectPaciente = (pacienteId: string) => {
     const paciente = pacientes.find(p => p.id === pacienteId);
     if (paciente) {
@@ -115,17 +105,19 @@ export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
     }
   };
 
-  // Handler para autocompletar Lugar
   const handleSelectSucursal = (sucursalId: string) => {
     const sucursal = sucursales.find(s => s.id === sucursalId);
     if (sucursal) {
       form.setValue('lugar', sucursal.nombre + ' - ');
-      toast.info(`Lugar pre-cargado: ${sucursal.nombre}.`);
     }
   };
 
-  // onSubmit (convierte strings a números)
   const onSubmit = async (data: PartoFormData) => {
+    if (!auth.currentUser) {
+      toast.error("Sesión no válida.");
+      return;
+    }
+
     try {
       const fechaHoraParto = new Date(`${data.fecha_parto}T${data.hora_parto}`);
       
@@ -143,6 +135,8 @@ export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
         sexo_recien_nacido: data.sexo_recien_nacido,
         observaciones: data.observaciones || '',
         creado_en: Timestamp.now(),
+        // Guardamos la propiedad
+        usuarioId: auth.currentUser.uid 
       });
 
       toast.success("Parto registrado exitosamente");
@@ -171,13 +165,13 @@ export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
             
-            {/* Sección de Autocompletar */}
+            {/* Atajos */}
             <div>
               <h3 className="mb-4 text-primary">Atajos de Registro</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select onValueChange={handleSelectPaciente} disabled={isLoadingLists}>
                   <SelectTrigger>
-                    <SelectValue placeholder={isLoadingLists ? "Cargando pacientes..." : "Buscar Paciente Existente..."} />
+                    <SelectValue placeholder={isLoadingLists ? "Cargando..." : "Buscar Paciente..."} />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
                     {pacientes.map(p => (
@@ -190,13 +184,11 @@ export function RegistrarPartoDialog({ children }: RegistrarPartoDialogProps) {
                 
                 <Select onValueChange={handleSelectSucursal} disabled={isLoadingLists}>
                   <SelectTrigger>
-                    <SelectValue placeholder={isLoadingLists ? "Cargando sucursales..." : "Precargar Lugar (Sucursal)..."} />
+                    <SelectValue placeholder={isLoadingLists ? "Cargando..." : "Precargar Lugar..."} />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
                      {sucursales.map(s => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.nombre}
-                      </SelectItem>
+                      <SelectItem key={s.id} value={s.id}>{s.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

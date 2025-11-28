@@ -1,3 +1,6 @@
+// src/types/index.ts
+
+// 1. TIPO PROGRAMA
 export interface Programa {
   id: string; 
   nombre: string;
@@ -5,7 +8,7 @@ export interface Programa {
   estado: "ACTIVO" | "INACTIVO";
 }
 
-// TIPO PACIENTE (Actualizado con Historia Clínica)
+// 2. TIPO PACIENTE (Con Historia Clínica + usuarioId)
 export interface Patient {
   id: string; // DNI
   doc_identidad: string;
@@ -13,6 +16,8 @@ export interface Patient {
   apellidos: string;
   fecha_nacimiento: { seconds: number; nanoseconds: number } | Date;
   edad?: number; 
+  
+  // Datos Personales
   sexo: "F" | "M"; 
   grupo_sanguineo?: string; 
   telefono: string;
@@ -30,16 +35,20 @@ export interface Patient {
   antecedentes_cesareas?: number; // C
   antecedentes_hijos_vivos?: number; // HV
   
-  antecedentes_personales?: string; // Enfermedades crónicas, cirugías
-  antecedentes_familiares?: string; // Diabetes en familia, etc.
+  antecedentes_personales?: string; 
+  antecedentes_familiares?: string; 
   alergias?: string;
   medicacion_actual?: string;
   
-  // Datos del embarazo actual (si aplica)
-  fum?: string; // Fecha Última Regla (string YYYY-MM-DD para facilitar inputs)
-  fpp?: string; // Fecha Probable Parto
+  // Embarazo actual
+  fum?: string; 
+  fpp?: string; 
+
+  // --- Permisos ---
+  usuarioId?: string; // ID del obstetra que lo registró
 }
 
+// 3. TIPO PARTO (Con usuarioId)
 export interface Parto {
   id: string;
   paciente_nombres: string;
@@ -54,8 +63,12 @@ export interface Parto {
   talla_recien_nacido: number; 
   sexo_recien_nacido: "M" | "F";
   observaciones?: string; 
+  
+  // Permisos
+  usuarioId?: string;
 }
 
+// 4. TIPO CONSULTA (Con usuarioId)
 export interface Consulta {
   id: string;
   id_paciente: string;
@@ -70,6 +83,8 @@ export interface Consulta {
   edad_gestacional?: string;
   diagnostico: string;
   indicaciones: string;
-  registrado_por?: string;
   creado_en?: any;
+  
+  // Permisos
+  usuarioId?: string;
 }
