@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import { type Patient, type Consulta, type Parto, type Inscripcion } from '../types';
 import { Button } from '../components/ui/button';
@@ -44,11 +44,17 @@ export default function PacienteDetallePage() {
     return toDate(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  // --- EFECTO DE CARGA DE DATOS (Real-time) ---
   useEffect(() => {
+    if (!id) return;
+
+    let unsubConsultas: () => void;
+    let unsubPartos: () => void;
+    let unsubInscripciones: () => void;
+
     const fetchData = async () => {
-      if (!id) return;
       try {
-        // 1. Cargar Paciente
+        // 1. Cargar Paciente (Este sí puede ser getDoc una sola vez)
         const docRef = doc(db, "pacientes", id);
         const docSnap = await getDoc(docRef);
 
@@ -69,20 +75,24 @@ export default function PacienteDetallePage() {
             fpp: data.fpp || ''
           });
 
-          // 2. Cargar Historial de Consultas
+          // 2. Suscribirse a Consultas (Tiempo Real)
           const qConsultas = query(collection(db, "consultas"), where("id_paciente", "==", id), orderBy("fecha", "desc"));
-          const snapConsultas = await getDocs(qConsultas);
-          setConsultas(snapConsultas.docs.map(d => ({ id: d.id, ...d.data() } as Consulta)));
+          unsubConsultas = onSnapshot(qConsultas, (snap) => {
+             setConsultas(snap.docs.map(d => ({ id: d.id, ...d.data() } as Consulta)));
+          });
 
-          // 3. Cargar Historial de Partos
+          // 3. Suscribirse a Partos (Tiempo Real)
           const qPartos = query(collection(db, "partos"), where("paciente_dni", "==", id), orderBy("fecha_parto", "desc"));
-          const snapPartos = await getDocs(qPartos);
-          setPartos(snapPartos.docs.map(d => ({ id: d.id, ...d.data() } as Parto)));
+          unsubPartos = onSnapshot(qPartos, (snap) => {
+             setPartos(snap.docs.map(d => ({ id: d.id, ...d.data() } as Parto)));
+          });
 
-          // 4. Cargar Inscripciones a Programas
+          // 4. Suscribirse a Inscripciones (ESTO ARREGLA TU PROBLEMA)
+          // Usamos onSnapshot en lugar de getDocs para que se actualice solo
           const qInscripciones = query(collection(db, "inscripciones"), where("id_paciente", "==", id));
-          const snapInscripciones = await getDocs(qInscripciones);
-          setInscripciones(snapInscripciones.docs.map(d => ({ id: d.id, ...d.data() } as Inscripcion)));
+          unsubInscripciones = onSnapshot(qInscripciones, (snap) => {
+             setInscripciones(snap.docs.map(d => ({ id: d.id, ...d.data() } as Inscripcion)));
+          });
 
         } else {
           toast.error("Paciente no encontrada");
@@ -94,7 +104,15 @@ export default function PacienteDetallePage() {
       }
       setIsLoading(false);
     };
+
     fetchData();
+
+    // Limpiar suscripciones al salir de la página
+    return () => {
+      if (unsubConsultas) unsubConsultas();
+      if (unsubPartos) unsubPartos();
+      if (unsubInscripciones) unsubInscripciones();
+    };
   }, [id, navigate]);
 
   const handleSaveHistoria = async () => {
@@ -242,7 +260,6 @@ export default function PacienteDetallePage() {
               </Card>
             </TabsContent>
 
-            {/* NUEVA PESTAÑA: PROGRAMAS */}
             <TabsContent value="programas">
               <Card className="mt-4 border-t-4 border-t-purple-500">
                 <CardHeader>
@@ -254,9 +271,9 @@ export default function PacienteDetallePage() {
                         <CardDescription>Programas de salud en los que está inscrita la paciente</CardDescription>
                       </div>
                       <InscribirProgramaDialog patient={patient}>
-                         <Button className="bg-purple-600 hover:bg-purple-700">
-                            <Plus className="h-4 w-4 mr-2" /> Inscribir
-                         </Button>
+                          <Button className="bg-purple-600 hover:bg-purple-700">
+                             <Plus className="h-4 w-4 mr-2" /> Inscribir
+                          </Button>
                       </InscribirProgramaDialog>
                    </div>
                 </CardHeader>

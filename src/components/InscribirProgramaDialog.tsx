@@ -18,8 +18,9 @@ import { getAuth } from 'firebase/auth';
 import { type Programa, type Patient } from '../types';
 
 interface Props {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   patient: Patient; // Necesitamos los datos del paciente para guardar la referencia
+  onInscripcionExitosa?: () => void;
 }
 
 const inscripcionSchema = z.object({
@@ -31,7 +32,7 @@ const inscripcionSchema = z.object({
 
 type InscripcionFormData = z.infer<typeof inscripcionSchema>;
 
-export function InscribirProgramaDialog({ children, patient }: Props) {
+export function InscribirProgramaDialog({ children, patient, onInscripcionExitosa }: Props) {
   const [open, setOpen] = useState(false);
   const [programas, setProgramas] = useState<Programa[]>([]);
   const [isLoadingProgramas, setIsLoadingProgramas] = useState(false);
@@ -50,6 +51,8 @@ export function InscribirProgramaDialog({ children, patient }: Props) {
   // Cargar programas ACTIVOS
   useEffect(() => {
     const fetchProgramas = async () => {
+      if (!open) return; // Solo cargamos si el diálogo está abierto
+      
       setIsLoadingProgramas(true);
       try {
         const q = query(collection(db, "programas"), where("estado", "==", "ACTIVO"));
@@ -62,7 +65,7 @@ export function InscribirProgramaDialog({ children, patient }: Props) {
       }
       setIsLoadingProgramas(false);
     };
-    if (open) fetchProgramas();
+    fetchProgramas();
   }, [open]);
 
   const onSubmit = async (data: InscripcionFormData) => {
@@ -91,6 +94,8 @@ export function InscribirProgramaDialog({ children, patient }: Props) {
       toast.success(`Inscrita en ${programaSelect?.nombre}`);
       setOpen(false);
       form.reset();
+      
+      if (onInscripcionExitosa) onInscripcionExitosa();
 
     } catch (error) {
       console.error("Error inscribiendo:", error);
@@ -101,7 +106,11 @@ export function InscribirProgramaDialog({ children, patient }: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {children}
+        {children || (
+            <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                <ClipboardList className="mr-2 h-4 w-4" /> Inscribir
+            </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-md bg-white">
         <DialogHeader>
