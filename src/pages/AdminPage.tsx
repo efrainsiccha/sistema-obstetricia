@@ -25,13 +25,25 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
-import { ArrowLeft, UserPlus, Users, Baby, ClipboardList, MapPin, Phone, CreditCard, Clock, Mail, Loader2 } from "lucide-react";
+import { 
+  ArrowLeft, 
+  UserPlus, 
+  Users, 
+  Baby, 
+  ClipboardList, 
+  MapPin, 
+  Phone, 
+  CreditCard, 
+  Clock, 
+  Mail, 
+  Loader2,
+  BarChart3 // <--- Icono para el reporte
+} from "lucide-react";
 import { StatsCard } from "../components/StatsCard";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
-// Importamos el nuevo componente de edición
+// Importamos componentes personalizados
 import { EditarUsuarioDialog } from "../components/EditarUsuarioDialog";
-// Importamos el NUEVO componente de Turnos
 import { TurnosHoy } from "../components/TurnosHoy";
 
 // --- Definición de Tipos ---
@@ -241,23 +253,38 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
+      {/* Header con Botones de Acción */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Panel de Administración</h1>
-        <Button variant="outline" onClick={() => navigate("/home")}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver al Inicio
-        </Button>
+        
+        <div className="flex gap-2">
+          {/* Botón para ir al Reporte de Productividad */}
+          <Button 
+            className="bg-purple-600 hover:bg-purple-700 text-white" 
+            onClick={() => navigate('/reportes/personal')}
+          >
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Ver Productividad
+          </Button>
+
+          <Button variant="outline" onClick={() => navigate("/home")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver al Inicio
+          </Button>
+        </div>
       </div>
 
+      {/* Tarjetas Superiores */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
         <StatsCard title="Usuarios" value={usuarios.length} icon={<Users className="w-5 h-5" />} subtitle={`Admins ${usuarios.filter(u => u.rol === "ADMIN").length}, Obstetras ${usuarios.filter(u => u.rol === "OBSTETRA").length}`} />
         <StatsCard title="Pacientes" value={pacientesCount} icon={<Users className="w-5 h-5" />} />
         <StatsCard title="Partos" value={partosCount} icon={<Baby className="w-5 h-5" />} />
       </div>
 
-      {/* --- NUEVO SECCIÓN: TURNOS DE HOY --- */}
+      {/* --- SECCIÓN: TURNOS DE HOY --- */}
       <TurnosHoy usuarios={usuarios} />
 
+      {/* Estadísticas Generales */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
         <StatsCard title="Programas Activos" value={programasActivosCount} icon={<ClipboardList className="w-5 h-5" />} />
         <StatsCard title="Sucursales" value={sucursalesCount} icon={<MapPin className="w-5 h-5" />} />
@@ -268,6 +295,8 @@ export default function AdminPage() {
         <StatsCard title="Pacientes Inactivos" value={pacientesInactivosCount} icon={<Users className="w-5 h-5" />} trend={`${pacientesInactivosCount}/${pacientesCount}`} />
         <StatsCard title="Top Sucursal" value={pacientesPorSucursal[0]?.count || 0} icon={<MapPin className="w-5 h-5" />} subtitle={pacientesPorSucursal[0]?.nombre || "Sin datos"} />
       </div>
+
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 shadow-lg border-border/50">
           <CardHeader>
@@ -302,6 +331,8 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Tabla Sucursales */}
       <Card className="shadow-lg border-border/50">
         <CardHeader>
           <CardTitle>Pacientes por sucursal</CardTitle>
@@ -333,7 +364,7 @@ export default function AdminPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         
-        {/* COLUMNA 1: Formulario */}
+        {/* COLUMNA 1: Formulario de Creación */}
         <div className="xl:col-span-1">
           <Card className="shadow-lg border-border/50 sticky top-6">
             <CardHeader>
@@ -513,7 +544,7 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* COLUMNA 2: Tabla */}
+        {/* COLUMNA 2: Tabla de Usuarios */}
         <div className="xl:col-span-2">
           <Card className="shadow-lg border-border/50">
             <CardHeader>

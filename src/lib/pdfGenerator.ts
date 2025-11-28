@@ -19,7 +19,7 @@ export const generateRecetaPDF = (consulta: Consulta, paciente: Patient) => {
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("Av. Principal 123 - Tel: (01) 555-0909", 105, 19, { align: "center" });
+  doc.text("Av. Principal 123 - Tel: (51) 976908412", 105, 19, { align: "center" });
 
   // 2. TÍTULO DEL DOCUMENTO
   doc.setTextColor(primaryColor);
@@ -46,7 +46,6 @@ export const generateRecetaPDF = (consulta: Consulta, paciente: Patient) => {
   doc.text(`${paciente.nombres} ${paciente.apellidos}`, 45, 60);
   doc.text(paciente.doc_identidad, 130, 60);
   
-  // Calcular edad si no existe
   let edad = paciente.edad ? paciente.edad.toString() : "";
   if (!edad && paciente.fecha_nacimiento) {
      const nac = new Date((paciente.fecha_nacimiento as any).seconds * 1000);

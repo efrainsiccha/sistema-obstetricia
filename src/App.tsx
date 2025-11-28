@@ -14,6 +14,7 @@ import { DerivacionesPage } from "./pages/DerivacionesPage";
 import { DiagnosticosPage } from "./pages/DiagnosticosPage";
 import ProgramaDetallePage from "./pages/ProgramaDetallePage";
 import ReporteGestantesPage from "./pages/ReporteGestantesPage";
+import ReportePersonalPage from "./pages/ReportePersonalPage";
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
 
           <Route path="/derivaciones" element={<DerivacionesPage />} />
           <Route path="/diagnosticos" element={<DiagnosticosPage />} />
+          <Route path="/reportes/personal" element={<ReportePersonalPage />} />
         </Route>
       </Routes>
     </Router>
