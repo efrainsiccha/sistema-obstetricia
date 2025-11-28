@@ -18,16 +18,18 @@ import {
   Baby, 
   ClipboardList, 
   Plus, 
-  FolderOpen 
+  FolderOpen,
+  Printer
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
-// Importamos los componentes auxiliares
+// Importamos los componentes auxiliares y librerías
 import { InscribirProgramaDialog } from '../components/InscribirProgramaDialog';
-import { PatientFilesTab } from '../components/PatientFilesTab'; // <--- NUEVO COMPONENTE
+import { PatientFilesTab } from '../components/PatientFilesTab';
+import { generateRecetaPDF } from '../lib/pdfGenerator'; 
 
 export default function PacienteDetallePage() {
   const { id } = useParams(); 
@@ -67,7 +69,7 @@ export default function PacienteDetallePage() {
 
     const fetchData = async () => {
       try {
-        // 1. Cargar Paciente (Este sí puede ser getDoc una sola vez, la info básica cambia poco)
+        // 1. Cargar Paciente (getDoc una sola vez)
         const docRef = doc(db, "pacientes", id);
         const docSnap = await getDoc(docRef);
 
@@ -88,21 +90,20 @@ export default function PacienteDetallePage() {
             fpp: data.fpp || ''
           });
 
-          // 2. Suscribirse a Consultas (Tiempo Real)
+          // 2. Suscribirse a Consultas
           const qConsultas = query(collection(db, "consultas"), where("id_paciente", "==", id), orderBy("fecha", "desc"));
           unsubConsultas = onSnapshot(qConsultas, (snap) => {
              setConsultas(snap.docs.map(d => ({ id: d.id, ...d.data() } as Consulta)));
           });
 
-          // 3. Suscribirse a Partos (Tiempo Real)
-          // Nota: Si usas DNI como ID en Partos asegúrate que coincida aquí (id vs paciente_dni)
+          // 3. Suscribirse a Partos
+          // Nota: Asegúrate de que 'paciente_dni' sea el campo correcto en tu BD, si usas ID usa 'id_paciente'
           const qPartos = query(collection(db, "partos"), where("paciente_dni", "==", data.doc_identidad), orderBy("fecha_parto", "desc"));
           unsubPartos = onSnapshot(qPartos, (snap) => {
              setPartos(snap.docs.map(d => ({ id: d.id, ...d.data() } as Parto)));
           });
 
-          // 4. Suscribirse a Inscripciones (ESTO ARREGLA EL PROBLEMA DE REFRESCO)
-          // Usamos el ID del documento del paciente para filtrar
+          // 4. Suscribirse a Inscripciones
           const qInscripciones = query(collection(db, "inscripciones"), where("id_paciente", "==", id));
           unsubInscripciones = onSnapshot(qInscripciones, (snap) => {
              setInscripciones(snap.docs.map(d => ({ id: d.id, ...d.data() } as Inscripcion)));
@@ -121,7 +122,6 @@ export default function PacienteDetallePage() {
 
     fetchData();
 
-    // Limpiar suscripciones al salir de la página para no dejar procesos memoria
     return () => {
       if (unsubConsultas) unsubConsultas();
       if (unsubPartos) unsubPartos();
@@ -201,7 +201,7 @@ export default function PacienteDetallePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* COLUMNA IZQUIERDA: DATOS CONTACTO */}
+        {/* COLUMNA IZQUIERDA: DATOS */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -230,7 +230,6 @@ export default function PacienteDetallePage() {
         <div className="lg:col-span-2 space-y-6">
           
           <Tabs defaultValue="historia" className="w-full">
-            {/* AGREGAMOS LA NUEVA PESTAÑA AQUÍ 👇 */}
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="historia">Historia Clínica</TabsTrigger>
               <TabsTrigger value="programas">Programas</TabsTrigger>
@@ -331,7 +330,7 @@ export default function PacienteDetallePage() {
                     <div className="space-y-4">
                       {consultas.map(c => (
                         <div key={c.id} className="flex items-start justify-between border-b pb-4 last:border-0 last:pb-0">
-                          <div>
+                          <div className="flex-1 pr-4">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline">{c.tipo}</Badge>
                               <span className="text-sm font-medium text-gray-900">{formatDate(c.fecha)}</span>
@@ -339,9 +338,25 @@ export default function PacienteDetallePage() {
                             <p className="text-sm mt-1 font-medium">{c.motivo}</p>
                             <p className="text-xs text-gray-500 mt-1">Dx: {c.diagnostico}</p>
                           </div>
-                          <div className="text-right text-xs text-gray-500">
-                            <p>PA: {c.presion_arterial || '-'}</p>
-                            <p>Peso: {c.peso || '-'} kg</p>
+                          
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="text-right text-xs text-gray-500">
+                              <p>PA: {c.presion_arterial || '-'}</p>
+                              <p>Peso: {c.peso || '-'} kg</p>
+                            </div>
+                            {/* BOTÓN IMPRIMIR RECETA */}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-pink-600 hover:bg-pink-50 h-8 px-2"
+                              onClick={() => {
+                                if (patient) generateRecetaPDF(c, patient);
+                                else toast.error("Datos incompletos");
+                              }}
+                              title="Imprimir Receta"
+                            >
+                              <Printer className="h-4 w-4 mr-1" /> Receta
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -373,7 +388,6 @@ export default function PacienteDetallePage() {
               </Card>
             </TabsContent>
 
-            {/* PESTAÑA MULTIMEDIA INTEGRADA */}
             <TabsContent value="archivos">
                <PatientFilesTab patientId={patient.id} />
             </TabsContent>
