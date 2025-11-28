@@ -29,7 +29,10 @@ import { ArrowLeft, UserPlus, Users, Baby, ClipboardList, MapPin, Phone, CreditC
 import { StatsCard } from "../components/StatsCard";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
+// Importamos el nuevo componente de edición
 import { EditarUsuarioDialog } from "../components/EditarUsuarioDialog";
+// Importamos el NUEVO componente de Turnos
+import { TurnosHoy } from "../components/TurnosHoy";
 
 // --- Definición de Tipos ---
 
@@ -251,6 +254,10 @@ export default function AdminPage() {
         <StatsCard title="Pacientes" value={pacientesCount} icon={<Users className="w-5 h-5" />} />
         <StatsCard title="Partos" value={partosCount} icon={<Baby className="w-5 h-5" />} />
       </div>
+
+      {/* --- NUEVO SECCIÓN: TURNOS DE HOY --- */}
+      <TurnosHoy usuarios={usuarios} />
+
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
         <StatsCard title="Programas Activos" value={programasActivosCount} icon={<ClipboardList className="w-5 h-5" />} />
         <StatsCard title="Sucursales" value={sucursalesCount} icon={<MapPin className="w-5 h-5" />} />
