@@ -88,7 +88,8 @@ export interface Derivacion {
   motivo: string;
   prioridad: "ALTA" | "MEDIA" | "BAJA";
   fecha: { seconds: number; nanoseconds: number } | Date;
-  estado: "PENDIENTE" | "COMPLETADA";
+  estado: "PENDIENTE" | "COMPLETADA" | "ANULADA";
+  
   observaciones?: string;
   usuarioId?: string;
 }

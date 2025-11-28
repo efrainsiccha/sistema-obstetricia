@@ -1,97 +1,200 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { ArrowLeft, Ambulance, AlertTriangle, Loader2 } from 'lucide-react';
-import { RegistrarDerivacionDialog } from '../components/RegistrarDerivacionDialog';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { 
+  ArrowLeft, 
+  FileText, 
+  Search, 
+  Plus, 
+  Pencil, 
+  Ban, 
+  CheckCircle2, 
+  AlertCircle,
+  Loader2 
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { toast, Toaster } from "sonner";
 
 // Firebase
-import { db } from '../lib/firebaseConfig';
-import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { type Derivacion } from '../types';
+import { db } from "../lib/firebaseConfig";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, Timestamp } from "firebase/firestore";
+import type { Derivacion } from "../types";
+
+// Importamos el Diálogo de Edición
+import { EditarDerivacionDialog, type DerivacionFormData } from "../components/EditarDerivacionDialog";
 
 export function DerivacionesPage() {
   const navigate = useNavigate();
-  const auth = getAuth();
   const [derivaciones, setDerivaciones] = useState<Derivacion[]>([]);
+  const [filteredDerivaciones, setFilteredDerivaciones] = useState<Derivacion[]>([]);
+  const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
+  // Estados para Edición
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingDerivacion, setEditingDerivacion] = useState<Derivacion | null>(null);
+
+  // Estados para Anulación
+  const [anularDialogOpen, setAnularDialogOpen] = useState(false);
+  const [idToAnular, setIdToAnular] = useState<string | null>(null);
+
+  // 1. LEER (Read)
   useEffect(() => {
-    let unsubscribe: () => void;
-
-    const setupListener = async () => {
-      setIsLoading(true);
-      try {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        // 1. Verificar Rol
-        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-        const esAdmin = userDoc.data()?.rol === "ADMIN";
-
-        // 2. Definir Query
-        let q;
-        if (esAdmin) {
-          // Admin ve todas las derivaciones
-          q = collection(db, "derivaciones");
-        } else {
-          // Obstetra ve solo las suyas
-          q = query(collection(db, "derivaciones"), where("usuarioId", "==", user.uid));
-        }
-
-        // 3. Escuchar cambios
-        unsubscribe = onSnapshot(q, (snap) => {
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Derivacion));
-          
-          // Ordenar por fecha (más reciente primero)
-          list.sort((a, b) => {
-            const dateA = a.fecha ? new Date((a.fecha as any).seconds * 1000) : new Date();
-            const dateB = b.fecha ? new Date((b.fecha as any).seconds * 1000) : new Date();
-            return dateB.getTime() - dateA.getTime();
-          });
-
-          setDerivaciones(list);
-          setIsLoading(false);
-        }, (error) => {
-          console.error(error);
-          toast.error("Error al cargar derivaciones");
-          setIsLoading(false);
-        });
-
-      } catch (error) {
-        console.error(error);
-        setIsLoading(false);
-      }
-    };
-
-    setupListener();
-    return () => { if (unsubscribe) unsubscribe(); };
+    const q = query(collection(db, "derivaciones"), orderBy("fecha", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Derivacion));
+      setDerivaciones(data);
+      setFilteredDerivaciones(data);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
+  // Filtro de búsqueda
+  useEffect(() => {
+    const lower = search.toLowerCase();
+    const filtered = derivaciones.filter(
+      (d) =>
+        d.paciente_nombre.toLowerCase().includes(lower) ||
+        d.paciente_dni.includes(search) ||
+        d.especialidad.toLowerCase().includes(lower)
+    );
+    setFilteredDerivaciones(filtered);
+  }, [search, derivaciones]);
+
+  // 2. EDITAR (Update)
+  const handleEditClick = (derivacion: Derivacion) => {
+    if (derivacion.estado === "ANULADA") {
+        toast.error("No se puede editar una derivación anulada.");
+        return;
+    }
+    setEditingDerivacion(derivacion);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async (id: string, data: DerivacionFormData) => {
+    try {
+      const docRef = doc(db, "derivaciones", id);
+      await updateDoc(docRef, {
+        ...data,
+        updatedAt: Timestamp.now()
+      });
+      toast.success("Derivación actualizada correctamente");
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al actualizar la derivación");
+    }
+  };
+
+  // 3. ANULAR (Soft Delete / Change Status)
+  const handleAnularClick = (id: string, estadoActual: string) => {
+    if (estadoActual === "ANULADA") return;
+    setIdToAnular(id);
+    setAnularDialogOpen(true);
+  };
+
+  const confirmAnular = async () => {
+    if (!idToAnular) return;
+    try {
+      const docRef = doc(db, "derivaciones", idToAnular);
+      await updateDoc(docRef, {
+        estado: "ANULADA"
+      });
+      toast.success("Derivación anulada.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al anular la derivación");
+    } finally {
+      setAnularDialogOpen(false);
+      setIdToAnular(null);
+    }
+  };
+
+  const getPriorityColor = (p: string) => {
+    switch (p) {
+      case "ALTA": return "bg-red-100 text-red-800 border-red-200";
+      case "MEDIA": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      default: return "bg-green-100 text-green-800 border-green-200";
+    }
+  };
+
+  const getStatusBadge = (estado: string) => {
+    switch (estado) {
+      case "COMPLETADA":
+        return <Badge className="bg-green-500 hover:bg-green-600"><CheckCircle2 className="w-3 h-3 mr-1"/> Completada</Badge>;
+      case "ANULADA":
+        return <Badge variant="destructive" className="bg-red-500 hover:bg-red-600"><Ban className="w-3 h-3 mr-1"/> Anulada</Badge>;
+      default:
+        return <Badge variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-300"><AlertCircle className="w-3 h-3 mr-1"/> Pendiente</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <Loader2 className="h-10 w-10 animate-spin text-pink-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between">
         <div>
-          <Button variant="outline" size="sm" onClick={() => navigate('/home')} className="gap-2 mb-2">
-            <ArrowLeft className="h-4 w-4"/> Volver
+          <Button variant="ghost" className="mb-2 pl-0 hover:bg-transparent hover:text-pink-600" onClick={() => navigate('/home')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
           </Button>
-          <h1 className="text-primary text-2xl font-bold flex items-center gap-2">
-            <Ambulance className="h-6 w-6"/> Derivaciones
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <FileText className="h-8 w-8 text-pink-600" />
+            Derivaciones y Referencias
           </h1>
+          <p className="text-muted-foreground">Gestiona las transferencias de pacientes a otras especialidades.</p>
         </div>
-        <RegistrarDerivacionDialog>
-          <Button className="bg-orange-600 hover:bg-orange-700">
-            <AlertTriangle className="mr-2 h-4 w-4"/> Nueva Derivación
-          </Button>
-        </RegistrarDerivacionDialog>
+        
+        {/* Este botón puede abrir un modal de creación o llevar a otra página */}
+        <Button className="bg-pink-600 hover:bg-pink-700" onClick={() => toast.info("Usa el botón 'Registrar Derivación' desde el perfil del paciente")}>
+          <Plus className="mr-2 h-4 w-4" /> Nueva Derivación
+        </Button>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Listado de Referencias</CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium">Historial de Derivaciones</CardTitle>
+          <div className="pt-4">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por paciente, DNI o especialidad..."
+                className="pl-8 max-w-md"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -100,30 +203,69 @@ export function DerivacionesPage() {
                 <TableHead>Paciente</TableHead>
                 <TableHead>Especialidad</TableHead>
                 <TableHead>Prioridad</TableHead>
+                <TableHead>Motivo</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-8 w-8 mx-auto animate-spin text-orange-600"/></TableCell></TableRow>
-              ) : derivaciones.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No hay derivaciones registradas.</TableCell></TableRow>
+              {filteredDerivaciones.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No se encontraron derivaciones.
+                  </TableCell>
+                </TableRow>
               ) : (
-                derivaciones.map(d => (
-                  <TableRow key={d.id}>
-                    <TableCell>{d.fecha ? new Date((d.fecha as any).seconds * 1000).toLocaleDateString() : '-'}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{d.paciente_nombre}</div>
-                      <div className="text-xs text-gray-500">{d.paciente_dni}</div>
+                filteredDerivaciones.map((item) => (
+                  <TableRow key={item.id} className={item.estado === "ANULADA" ? "opacity-60 bg-gray-50" : ""}>
+                    <TableCell className="font-mono text-xs">
+                       {item.fecha && (item.fecha as any).seconds 
+                        ? new Date((item.fecha as any).seconds * 1000).toLocaleDateString()
+                        : "N/A"
+                       }
                     </TableCell>
-                    <TableCell>{d.especialidad}</TableCell>
                     <TableCell>
-                      <Badge variant={d.prioridad === "ALTA" ? "destructive" : "outline"}>
-                        {d.prioridad}
+                      <div className="flex flex-col">
+                        <span className="font-medium">{item.paciente_nombre}</span>
+                        <span className="text-xs text-muted-foreground">DNI: {item.paciente_dni}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-gray-700">{item.especialidad}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getPriorityColor(item.prioridad)}>
+                        {item.prioridad}
                       </Badge>
                     </TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={item.motivo}>
+                      {item.motivo}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{d.estado}</Badge>
+                      {getStatusBadge(item.estado)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Editar"
+                          disabled={item.estado === "ANULADA"}
+                          onClick={() => handleEditClick(item)}
+                          className="h-8 w-8 hover:bg-blue-50 text-blue-600 disabled:opacity-30"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Anular"
+                          disabled={item.estado === "ANULADA"}
+                          onClick={() => handleAnularClick(item.id, item.estado)}
+                          className="h-8 w-8 hover:bg-red-50 text-red-600 disabled:opacity-30"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -132,6 +274,34 @@ export function DerivacionesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Componente Dialog Editar */}
+      <EditarDerivacionDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        derivacion={editingDerivacion}
+        onSave={handleSaveEdit}
+      />
+
+      {/* Alerta de Confirmación para Anular */}
+      <AlertDialog open={anularDialogOpen} onOpenChange={setAnularDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Está seguro de anular esta derivación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La derivación pasará a estado "ANULADA". Quedará en el historial pero no será válida para atención.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAnular} className="bg-red-600 hover:bg-red-700">
+              Sí, Anular
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Toaster />
     </div>
   );
 }
