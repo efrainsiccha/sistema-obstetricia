@@ -1,8 +1,6 @@
-// src/pages/PacienteDetallePage.tsx
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'; // <-- Quitamos 'orderBy' de aquí
 import { db } from '../lib/firebaseConfig';
 import { type Patient, type Consulta, type Parto } from '../types';
 import { Button } from '../components/ui/button';
@@ -11,13 +9,13 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeft, Save, User, FileText, AlertTriangle, Loader2, Baby } from 'lucide-react';
-import { toast, Toaster } from 'sonner'; // <-- IMPORTANTE: Importamos Toaster
+import { toast, Toaster } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
 export default function PacienteDetallePage() {
-  const { id } = useParams(); // DNI
+  const { id } = useParams(); // DNI del paciente
   const navigate = useNavigate();
   
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -68,23 +66,43 @@ export default function PacienteDetallePage() {
             fpp: data.fpp || ''
           });
 
-          // 2. Cargar Historial de Consultas
-          const qConsultas = query(collection(db, "consultas"), where("id_paciente", "==", id), orderBy("fecha", "desc"));
+          // 2. Cargar Historial de Consultas (Sin orderBy en Firestore)
+          // Buscamos donde 'id_paciente' sea igual al DNI actual
+          const qConsultas = query(collection(db, "consultas"), where("id_paciente", "==", id));
           const snapConsultas = await getDocs(qConsultas);
-          setConsultas(snapConsultas.docs.map(d => ({ id: d.id, ...d.data() } as Consulta)));
+          
+          const listaConsultas = snapConsultas.docs.map(d => ({ id: d.id, ...d.data() } as Consulta));
+          
+          // ORDENAMIENTO MANUAL (Cliente): Más reciente primero
+          listaConsultas.sort((a, b) => {
+            const dateA = toDate(a.fecha).getTime();
+            const dateB = toDate(b.fecha).getTime();
+            return dateB - dateA; // Descendente
+          });
+          setConsultas(listaConsultas);
 
-          // 3. Cargar Historial de Partos
-          const qPartos = query(collection(db, "partos"), where("paciente_dni", "==", id), orderBy("fecha_parto", "desc"));
+          // 3. Cargar Historial de Partos (Sin orderBy en Firestore)
+          // Buscamos donde 'paciente_dni' sea igual al DNI actual (así lo guardamos en partos)
+          const qPartos = query(collection(db, "partos"), where("paciente_dni", "==", id));
           const snapPartos = await getDocs(qPartos);
-          setPartos(snapPartos.docs.map(d => ({ id: d.id, ...d.data() } as Parto)));
+          
+          const listaPartos = snapPartos.docs.map(d => ({ id: d.id, ...d.data() } as Parto));
+          
+          // ORDENAMIENTO MANUAL (Cliente)
+          listaPartos.sort((a, b) => {
+            const dateA = toDate(a.fecha_parto).getTime();
+            const dateB = toDate(b.fecha_parto).getTime();
+            return dateB - dateA;
+          });
+          setPartos(listaPartos);
 
         } else {
           toast.error("Paciente no encontrada");
           navigate('/pacientes');
         }
       } catch (error) {
-        console.error(error);
-        toast.error("Error al cargar datos");
+        console.error("Error cargando datos:", error);
+        toast.error("Error al cargar los datos.");
       }
       setIsLoading(false);
     };
@@ -132,8 +150,7 @@ export default function PacienteDetallePage() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl min-h-screen bg-gradient-to-br from-pink-50 to-white">
-      {/* <-- AÑADIDO: Componente para mostrar las notificaciones --> */}
-      <Toaster position="top-right" /> 
+      <Toaster position="top-right" />
       
       {/* Header */}
       <div className="mb-6">
@@ -187,7 +204,7 @@ export default function PacienteDetallePage() {
 
           <Card>
              <CardHeader><CardTitle className="text-lg">Sucursal</CardTitle></CardHeader>
-             <CardContent><p className="text-sm flex items-center gap-2">{patient.sucursal_nombre}</p></CardContent>
+             <CardContent><p className="text-sm">{patient.sucursal_nombre}</p></CardContent>
           </Card>
         </div>
 
