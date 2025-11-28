@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 
 import { RegistrarConsultaDialog } from '../components/RegistrarConsultaDialog';
 import { ConsultaDetalleDialog } from '../components/ConsultaDetalleDialog';
+import { EditarConsultaDialog } from '../components/EditarConsultaDialog';
 
 import { db } from '../lib/firebaseConfig';
 import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
@@ -54,11 +55,10 @@ export function ConsultasPage() {
             ...doc.data()
           } as Consulta));
           
-          // Ordenar: Futuras citas primero para la agenda, Pasadas para el historial
           list.sort((a, b) => {
             const dateA = toDate(a.fecha).getTime();
             const dateB = toDate(b.fecha).getTime();
-            return dateB - dateA; // Descendente por defecto
+            return dateB - dateA; 
           });
           
           setConsultas(list);
@@ -131,6 +131,7 @@ export function ConsultasPage() {
       <Tabs defaultValue="agenda" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
           <TabsTrigger value="agenda" className="flex gap-2"><Clock className="h-4 w-4"/> Agenda / Programadas ({agenda.length})</TabsTrigger>
+          {/* CORREGIDO: Ahora usa la variable 'historial' (con L al final) */}
           <TabsTrigger value="historia" className="flex gap-2"><CheckCircle className="h-4 w-4"/> Historial de Atenciones ({historial.length})</TabsTrigger>
         </TabsList>
 
@@ -175,9 +176,19 @@ export function ConsultasPage() {
                         </TableCell>
                         <TableCell className="max-w-xs truncate">{consulta.motivo}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleVerDetalle(consulta)}>
-                            <FileText className="h-4 w-4" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <EditarConsultaDialog 
+                              consulta={consulta} 
+                              trigger={
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-xs">
+                                  <CheckCircle className="h-3 w-3 mr-1"/> Atender
+                                </Button>
+                              }
+                            />
+                            <Button variant="ghost" size="sm" onClick={() => handleVerDetalle(consulta)}>
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -188,7 +199,6 @@ export function ConsultasPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB: HISTORIAL */}
         <TabsContent value="historia">
            <Card>
             <CardContent className="p-0">
@@ -231,9 +241,12 @@ export function ConsultasPage() {
                           {consulta.diagnostico || consulta.motivo}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleVerDetalle(consulta)}>
-                            <FileText className="h-4 w-4" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <EditarConsultaDialog consulta={consulta} />
+                            <Button variant="ghost" size="sm" onClick={() => handleVerDetalle(consulta)}>
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
