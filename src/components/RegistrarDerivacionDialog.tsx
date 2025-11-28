@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from './ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { toast } from 'sonner';
-import { Ambulance } from 'lucide-react';
+import { Loader2, Ambulance } from 'lucide-react';
 
 import { db } from '../lib/firebaseConfig';
 import { collection, addDoc, Timestamp, getDocs, query } from 'firebase/firestore';
@@ -47,7 +47,11 @@ export function RegistrarDerivacionDialog({ children }: Props) {
   }, [open]);
 
   const onSubmit = async (data: DerivacionFormData) => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      toast.error("Sesión no válida");
+      return;
+    }
+
     try {
       const paciente = pacientes.find(p => p.id === data.id_paciente);
       await addDoc(collection(db, "derivaciones"), {
@@ -56,12 +60,16 @@ export function RegistrarDerivacionDialog({ children }: Props) {
         paciente_dni: paciente?.doc_identidad || '',
         fecha: Timestamp.now(),
         estado: "PENDIENTE",
-        usuarioId: auth.currentUser.uid
+        // GUARDAMOS EL ID DEL USUARIO
+        usuarioId: auth.currentUser.uid 
       });
       toast.success("Derivación registrada");
       setOpen(false);
       form.reset();
-    } catch (e) { toast.error("Error al guardar"); }
+    } catch (e) { 
+      console.error(e);
+      toast.error("Error al guardar"); 
+    }
   };
 
   return (
@@ -92,7 +100,7 @@ export function RegistrarDerivacionDialog({ children }: Props) {
             <FormField control={form.control} name="motivo" render={({ field }) => (
               <FormItem><FormLabel>Motivo de Referencia</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
             )} />
-            <DialogFooter><Button type="submit">Guardar</Button></DialogFooter>
+            <DialogFooter><Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? <Loader2 className="animate-spin"/> : "Guardar"}</Button></DialogFooter>
           </form>
         </Form>
       </DialogContent>
