@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
-import { doc, getDoc, collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, onSnapshot} from "firebase/firestore";
 import { app, db } from "../lib/firebaseConfig";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
