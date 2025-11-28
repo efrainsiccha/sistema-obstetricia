@@ -13,6 +13,7 @@ import { PartosPage } from "./pages/PartosPage";
 import { DerivacionesPage } from "./pages/DerivacionesPage";
 import { DiagnosticosPage } from "./pages/DiagnosticosPage";
 import ProgramaDetallePage from "./pages/ProgramaDetallePage";
+import ReporteGestantesPage from "./pages/ReporteGestantesPage";
 
 export default function App() {
   return (
@@ -25,7 +26,7 @@ export default function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/reportes/obstetra" element={<ReporteObstetraPage />} />
-          
+          <Route path="/reportes/gestantes" element={<ReporteGestantesPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
 
           <Route path="/pacientes" element={<PacientesPage />} />
