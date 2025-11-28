@@ -105,3 +105,17 @@ export interface Diagnostico {
   tipo: "PRESUNTIVO" | "DEFINITIVO";
   usuarioId?: string;
 }
+// 7. TIPO INSCRIPCIÓN A PROGRAMA
+export interface Inscripcion {
+  id: string;
+  id_paciente: string;
+  paciente_dni: string;
+  paciente_nombre: string;
+  id_programa: string;
+  nombre_programa: string; // Denormalizado para no hacer doble consulta
+  fecha_inicio: { seconds: number; nanoseconds: number } | Date;
+  etapa?: string; // Ej: "1er Trimestre", "Fase Inicial"
+  estado: "ACTIVO" | "INACTIVO" | "COMPLETADO";
+  observaciones?: string;
+  usuarioId?: string;
+}
