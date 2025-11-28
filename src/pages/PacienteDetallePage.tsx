@@ -19,17 +19,17 @@ import {
   ClipboardList, 
   Plus, 
   FolderOpen,
-  Printer
+  Printer,
+  MessageCircle
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
-// Importamos los componentes auxiliares y librerías
 import { InscribirProgramaDialog } from '../components/InscribirProgramaDialog';
 import { PatientFilesTab } from '../components/PatientFilesTab';
-import { generateRecetaPDF } from '../lib/pdfGenerator'; 
+import { generateRecetaPDF } from '../lib/pdfGenerator';
 
 export default function PacienteDetallePage() {
   const { id } = useParams(); 
@@ -59,7 +59,32 @@ export default function PacienteDetallePage() {
     return toDate(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  // --- EFECTO DE CARGA DE DATOS (Real-time) ---
+  // --- LÓGICA WHATSAPP ---
+  const handleWhatsApp = (consulta: Consulta) => {
+    if (!patient?.telefono) {
+      toast.error("El paciente no tiene número de teléfono registrado");
+      return;
+    }
+
+    // 1. Limpiar el número (quitar espacios, guiones, paréntesis)
+    let phone = patient.telefono.replace(/\D/g, '');
+
+    // 2. Asegurar código de país (Ej: Perú 51). 
+    // Si el número tiene 9 dígitos (celular perú), le agregamos 51.
+    if (phone.length === 9) {
+      phone = `51${phone}`;
+    }
+
+    // 3. Crear el mensaje personalizado
+    const fechaCita = formatDate(consulta.fecha);
+    const mensaje = `Hola ${patient.nombres}, le saludamos del Centro Obstétrico Vida. Le recordamos su cita de ${consulta.tipo || "control"} programada para el día ${fechaCita}. Por favor confirmar su asistencia.`;
+
+    // 4. Abrir WhatsApp Web/App
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+  };
+
+  // --- EFECTO DE CARGA DE DATOS ---
   useEffect(() => {
     if (!id) return;
 
@@ -69,7 +94,6 @@ export default function PacienteDetallePage() {
 
     const fetchData = async () => {
       try {
-        // 1. Cargar Paciente (getDoc una sola vez)
         const docRef = doc(db, "pacientes", id);
         const docSnap = await getDoc(docRef);
 
@@ -90,20 +114,19 @@ export default function PacienteDetallePage() {
             fpp: data.fpp || ''
           });
 
-          // 2. Suscribirse a Consultas
+          // Consultas
           const qConsultas = query(collection(db, "consultas"), where("id_paciente", "==", id), orderBy("fecha", "desc"));
           unsubConsultas = onSnapshot(qConsultas, (snap) => {
              setConsultas(snap.docs.map(d => ({ id: d.id, ...d.data() } as Consulta)));
           });
 
-          // 3. Suscribirse a Partos
-          // Nota: Asegúrate de que 'paciente_dni' sea el campo correcto en tu BD, si usas ID usa 'id_paciente'
+          // Partos
           const qPartos = query(collection(db, "partos"), where("paciente_dni", "==", data.doc_identidad), orderBy("fecha_parto", "desc"));
           unsubPartos = onSnapshot(qPartos, (snap) => {
              setPartos(snap.docs.map(d => ({ id: d.id, ...d.data() } as Parto)));
           });
 
-          // 4. Suscribirse a Inscripciones
+          // Inscripciones
           const qInscripciones = query(collection(db, "inscripciones"), where("id_paciente", "==", id));
           unsubInscripciones = onSnapshot(qInscripciones, (snap) => {
              setInscripciones(snap.docs.map(d => ({ id: d.id, ...d.data() } as Inscripcion)));
@@ -344,19 +367,33 @@ export default function PacienteDetallePage() {
                               <p>PA: {c.presion_arterial || '-'}</p>
                               <p>Peso: {c.peso || '-'} kg</p>
                             </div>
-                            {/* BOTÓN IMPRIMIR RECETA */}
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-pink-600 hover:bg-pink-50 h-8 px-2"
-                              onClick={() => {
-                                if (patient) generateRecetaPDF(c, patient);
-                                else toast.error("Datos incompletos");
-                              }}
-                              title="Imprimir Receta"
-                            >
-                              <Printer className="h-4 w-4 mr-1" /> Receta
-                            </Button>
+                            
+                            <div className="flex gap-2">
+                              {/* BOTÓN WHATSAPP */}
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-green-600 hover:bg-green-50 h-8 px-2 border-green-200"
+                                onClick={() => handleWhatsApp(c)}
+                                title="Enviar recordatorio por WhatsApp"
+                              >
+                                <MessageCircle className="h-4 w-4 mr-1" /> Avisar
+                              </Button>
+
+                              {/* BOTÓN RECETA */}
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-pink-600 hover:bg-pink-50 h-8 px-2"
+                                onClick={() => {
+                                  if (patient) generateRecetaPDF(c, patient);
+                                  else toast.error("Datos incompletos");
+                                }}
+                                title="Imprimir Receta"
+                              >
+                                <Printer className="h-4 w-4 mr-1" /> Receta
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
