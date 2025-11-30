@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown} from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import {
@@ -8,7 +8,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-  CommandList, // Importante para scroll
+  CommandList,
 } from "./ui/command";
 import {
   Popover,
@@ -18,69 +18,58 @@ import {
 
 interface PatientSearchProps {
   pacientes: { id: string; nombre: string; dni: string }[];
-  value: string; // El ID del paciente seleccionado
+  value: string;
   onChange: (value: string) => void;
 }
 
 export function PatientSearch({ pacientes, value, onChange }: PatientSearchProps) {
   const [open, setOpen] = useState(false);
 
-  // Encontramos el paciente seleccionado para mostrar su nombre en el botón
   const selectedPatient = pacientes.find((p) => p.id === value);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between font-normal text-left"
+          className="w-full justify-between bg-white border-pink-200 text-left font-normal hover:bg-pink-50 hover:text-pink-900"
         >
           {selectedPatient
             ? `${selectedPatient.dni} - ${selectedPatient.nombre}`
-            : "Buscar paciente por nombre o DNI..."}
+            : "Seleccionar paciente..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command 
-            filter={(value, search) => {
-                // Personalizamos el filtro para que busque por DNI o Nombre
-                if (value.toLowerCase().includes(search.toLowerCase())) return 1;
-                return 0;
-            }}
-        >
-          <CommandInput placeholder="Escribe nombre o DNI..." />
+      
+      <PopoverContent className="w-[400px] p-0" align="start" side="bottom">
+        <Command>
+          <CommandInput placeholder="Escribe DNI o Nombre..." />
           <CommandList>
-            <CommandEmpty>No se encontró el paciente.</CommandEmpty>
-            <CommandGroup className="max-h-[200px] overflow-y-auto"> 
-              {pacientes.map((paciente) => {
-                // Creamos un string único para la búsqueda interna del componente
-                const searchString = `${paciente.dni} - ${paciente.nombre}`;
-                
-                return (
-                  <CommandItem
-                    key={paciente.id}
-                    value={searchString} // Esto es lo que usa el filtro interno
-                    onSelect={() => {
-                      onChange(paciente.id); // Devolvemos el ID real al formulario
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === paciente.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex flex-col">
-                        <span className="font-medium">{paciente.nombre}</span>
-                        <span className="text-xs text-muted-foreground">DNI: {paciente.dni}</span>
-                    </div>
-                  </CommandItem>
-                );
-              })}
+            <CommandEmpty>No se encontraron pacientes.</CommandEmpty>
+            <CommandGroup>
+              {pacientes.map((paciente) => (
+                <CommandItem
+                  key={paciente.id}
+                  value={`${paciente.dni} ${paciente.nombre}`} 
+                  onSelect={() => {
+                    onChange(paciente.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === paciente.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-medium">{paciente.nombre}</span>
+                    <span className="text-xs text-muted-foreground">DNI: {paciente.dni}</span>
+                  </div>
+                </CommandItem>
+              ))}
             </CommandGroup>
           </CommandList>
         </Command>
