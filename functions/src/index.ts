@@ -6,7 +6,6 @@ const db = admin.firestore();
 
 // --- 1. CREAR USUARIO ---
 
-// Actualizamos la interfaz para incluir TODOS los campos
 interface UserFormData {
   email: string;
   password: string;
@@ -14,7 +13,6 @@ interface UserFormData {
   rol: "ADMIN" | "OBSTETRA";
   estado: "ACTIVO" | "INACTIVO";
   sucursal: string;
-  // CAMPOS NUEVOS AGREGADOS:
   dni?: string;
   colegiatura?: string;
   telefono?: string;
@@ -43,7 +41,6 @@ export const crearUsuario = functions.https.onCall(
       );
     }
 
-    // EXTRAEMOS TODOS LOS DATOS (Incluyendo los nuevos)
     const { 
       email, 
       password, 
@@ -68,14 +65,12 @@ export const crearUsuario = functions.https.onCall(
       // B. Asignar Claims
       await admin.auth().setCustomUserClaims(userRecord.uid, { rol: rol });
 
-      // C. Crear en Firestore (GUARDAMOS TODO)
       await db.collection("usuarios").doc(userRecord.uid).set({
         email: email,
         nombre: nombre,
         rol: rol,
         estado: estado,
         sucursal: sucursal,
-        // Guardamos los campos opcionales (o string vacío si no vienen)
         dni: dni || "", 
         colegiatura: colegiatura || "",
         telefono: telefono || "",
