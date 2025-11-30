@@ -28,7 +28,7 @@ import {
   FormLabel,
   FormMessage,
 } from "./ui/form";
-import { Loader2, Baby, Search } from "lucide-react";
+import { Loader2, Baby, User } from "lucide-react";
 import { toast } from "sonner";
 
 // Importamos el buscador inteligente
@@ -41,8 +41,8 @@ import { getAuth } from "firebase/auth";
 
 // Esquema de validación
 const partoSchema = z.object({
-  // Campos del paciente (Denormalizados para el reporte)
-  pacienteId: z.string().min(1, "Debe seleccionar una paciente"), // ID del documento
+  // Campos del paciente
+  pacienteId: z.string().min(1, "Debe seleccionar una paciente"),
   paciente_nombres: z.string().min(1, "Requerido"),
   paciente_apellidos: z.string().min(1, "Requerido"),
   paciente_dni: z.string().min(1, "Requerido"),
@@ -54,7 +54,7 @@ const partoSchema = z.object({
   lugar: z.string().min(3, "Lugar requerido"),
   
   // Recién Nacido
-  apgar1: z.string().min(1, "Requerido"), // Lo manejamos como string en input, convertimos al guardar
+  apgar1: z.string().min(1, "Requerido"),
   apgar5: z.string().min(1, "Requerido"),
   sexo_recien_nacido: z.enum(["M", "F"]),
   peso_recien_nacido: z.string().min(1, "Requerido"),
@@ -110,7 +110,7 @@ export function RegistrarPartoDialog({ children }: Props) {
             id: doc.id,
             nombre: `${data.nombres} ${data.apellidos}`,
             dni: data.doc_identidad,
-            rawData: data // Guardamos la data cruda para autocompletar
+            rawData: data 
           };
         });
         
@@ -135,24 +135,18 @@ export function RegistrarPartoDialog({ children }: Props) {
       const fechaHora = new Date(`${data.fecha_parto}T${data.hora_parto}`);
 
       await addDoc(collection(db, "partos"), {
-        // Datos Paciente
-        id_paciente: data.pacienteId, // Referencia
+        id_paciente: data.pacienteId,
         paciente_nombres: data.paciente_nombres,
         paciente_apellidos: data.paciente_apellidos,
         paciente_dni: data.paciente_dni,
-        
-        // Datos Parto
         fecha_parto: Timestamp.fromDate(fechaHora),
         tipo_parto: data.tipo_parto,
         lugar: data.lugar,
-        
-        // Datos RN (Convertimos a números)
         apgar1: parseInt(data.apgar1) || 0,
         apgar5: parseInt(data.apgar5) || 0,
         peso_recien_nacido: parseFloat(data.peso_recien_nacido) || 0,
         talla_recien_nacido: parseFloat(data.talla_recien_nacido) || 0,
         sexo_recien_nacido: data.sexo_recien_nacido,
-        
         observaciones: data.observaciones || "",
         usuarioId: auth.currentUser.uid,
         creado_en: Timestamp.now()
@@ -178,7 +172,7 @@ export function RegistrarPartoDialog({ children }: Props) {
         )}
       </DialogTrigger>
       
-      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto bg-white">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-pink-700">
             <Baby className="h-5 w-5" />
@@ -187,19 +181,23 @@ export function RegistrarPartoDialog({ children }: Props) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 py-2">
             
-            {/* SECCIÓN 1: BÚSQUEDA Y DATOS MADRE */}
-            <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
-              <h4 className="text-sm font-semibold text-pink-800 mb-3 flex items-center gap-2">
-                <Search className="h-4 w-4" /> Buscar Madre
-              </h4>
+            {/* --- SECCIÓN 1: DATOS DE LA MADRE (Bonito y Blanco) --- */}
+            <div className="bg-pink-50/60 p-4 rounded-xl border border-pink-100 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="bg-white p-1.5 rounded-full shadow-sm text-pink-600">
+                   <User className="h-4 w-4" />
+                </div>
+                <h4 className="text-sm font-bold text-pink-800">Datos de la Madre</h4>
+              </div>
               
+              {/* Buscador */}
               <FormField
                 control={form.control}
                 name="pacienteId"
                 render={({ field }) => (
-                  <FormItem className="mb-4">
+                  <FormItem>
                     <FormControl>
                       {isLoadingPacientes ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground border p-2 rounded-md bg-white">
@@ -211,7 +209,7 @@ export function RegistrarPartoDialog({ children }: Props) {
                           value={field.value}
                           onChange={(newValue) => {
                             field.onChange(newValue);
-                            // AUTOCOMPLETADO MÁGICO ✨
+                            // AUTOCOMPLETAR
                             const p = pacientes.find(x => x.id === newValue);
                             if (p) {
                               form.setValue("paciente_nombres", p.rawData.nombres);
@@ -227,33 +225,53 @@ export function RegistrarPartoDialog({ children }: Props) {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="paciente_nombres"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Nombres</FormLabel>
-                      <FormControl><Input {...field} readOnly className="bg-gray-100" /></FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="paciente_apellidos"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Apellidos</FormLabel>
-                      <FormControl><Input {...field} readOnly className="bg-gray-100" /></FormControl>
-                    </FormItem>
-                  )}
-                />
+              {/* Campos Autocompletados (DNI, Nombres, Apellidos) */}
+              <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-3">
+                    <FormField
+                      control={form.control}
+                      name="paciente_dni"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-gray-500">DNI</FormLabel>
+                          <FormControl>
+                             {/* bg-white limpio, readOnly */}
+                             <Input {...field} readOnly className="bg-white font-mono text-gray-700" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                </div>
+                <div className="col-span-4">
+                    <FormField
+                      control={form.control}
+                      name="paciente_nombres"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-gray-500">Nombres</FormLabel>
+                          <FormControl><Input {...field} readOnly className="bg-white text-gray-700" /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                </div>
+                <div className="col-span-5">
+                    <FormField
+                      control={form.control}
+                      name="paciente_apellidos"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-gray-500">Apellidos</FormLabel>
+                          <FormControl><Input {...field} readOnly className="bg-white text-gray-700" /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                </div>
               </div>
             </div>
 
-            {/* SECCIÓN 2: DATOS DEL PARTO */}
+            {/* --- SECCIÓN 2: DETALLES DEL PARTO --- */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-gray-700 border-b pb-1">Detalles del Parto</h4>
+              <h4 className="text-sm font-semibold text-gray-800 border-b pb-1">Información del Evento</h4>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -311,33 +329,11 @@ export function RegistrarPartoDialog({ children }: Props) {
               </div>
             </div>
 
-            {/* SECCIÓN 3: RECIÉN NACIDO */}
+            {/* --- SECCIÓN 3: RECIÉN NACIDO --- */}
             <div className="space-y-3 pt-2">
-              <h4 className="text-sm font-semibold text-gray-700 border-b pb-1">Información del Recién Nacido</h4>
+              <h4 className="text-sm font-semibold text-gray-800 border-b pb-1">Recién Nacido</h4>
               
               <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="apgar1"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>APGAR 1'</FormLabel>
-                      <FormControl><Input type="number" placeholder="0-10" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="apgar5"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>APGAR 5'</FormLabel>
-                      <FormControl><Input type="number" placeholder="0-10" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="sexo_recien_nacido"
@@ -351,6 +347,26 @@ export function RegistrarPartoDialog({ children }: Props) {
                           <SelectItem value="F">Femenino</SelectItem>
                         </SelectContent>
                       </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apgar1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>APGAR 1'</FormLabel>
+                      <FormControl><Input type="number" placeholder="0-10" {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apgar5"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>APGAR 5'</FormLabel>
+                      <FormControl><Input type="number" placeholder="0-10" {...field} /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -387,8 +403,8 @@ export function RegistrarPartoDialog({ children }: Props) {
               name="observaciones"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Observaciones / Complicaciones</FormLabel>
-                  <FormControl><Textarea rows={2} placeholder="Notas adicionales..." {...field} /></FormControl>
+                  <FormLabel>Observaciones</FormLabel>
+                  <FormControl><Textarea rows={2} placeholder="Complicaciones, notas..." {...field} /></FormControl>
                 </FormItem>
               )}
             />
