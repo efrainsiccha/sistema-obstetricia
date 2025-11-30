@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { RegistrarConsultaDialog } from '../components/RegistrarConsultaDialog';
 import { ConsultaDetalleDialog } from '../components/ConsultaDetalleDialog';
 import { EditarConsultaDialog } from '../components/EditarConsultaDialog';
+import { ReasignarConsultaDialog } from '../components/ReasignarConsultaDialog';
 
 import { db } from '../lib/firebaseConfig';
 import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
@@ -31,6 +32,9 @@ export function ConsultasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConsulta, setSelectedConsulta] = useState<Consulta | null>(null);
   const [isDetalleOpen, setIsDetalleOpen] = useState(false);
+  
+  // NUEVO ESTADO: Para saber si mostramos el botón de reasignar
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -39,8 +43,10 @@ export function ConsultasPage() {
       try {
         const user = auth.currentUser;
         if (!user) return;
+        
         const userDoc = await getDoc(doc(db, "usuarios", user.uid));
         const esAdmin = userDoc.data()?.rol === "ADMIN";
+        setIsAdmin(esAdmin); // Guardamos el rol en el estado
 
         let q;
         if (esAdmin) {
@@ -131,7 +137,6 @@ export function ConsultasPage() {
       <Tabs defaultValue="agenda" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
           <TabsTrigger value="agenda" className="flex gap-2"><Clock className="h-4 w-4"/> Agenda / Programadas ({agenda.length})</TabsTrigger>
-          {/* CORREGIDO: Ahora usa la variable 'historial' (con L al final) */}
           <TabsTrigger value="historia" className="flex gap-2"><CheckCircle className="h-4 w-4"/> Historial de Atenciones ({historial.length})</TabsTrigger>
         </TabsList>
 
@@ -177,6 +182,16 @@ export function ConsultasPage() {
                         <TableCell className="max-w-xs truncate">{consulta.motivo}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            
+                            {/* BOTÓN NUEVO: REASIGNAR (SOLO ADMIN) */}
+                            {isAdmin && (
+                              <ReasignarConsultaDialog 
+                                consultaId={consulta.id}
+                                fechaCita={consulta.fecha}
+                                currentMedicoId={consulta.usuarioId}
+                              />
+                            )}
+
                             <EditarConsultaDialog 
                               consulta={consulta} 
                               trigger={
