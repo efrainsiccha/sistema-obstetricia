@@ -40,8 +40,9 @@ import { db } from "../lib/firebaseConfig";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, Timestamp } from "firebase/firestore";
 import type { Derivacion } from "../types";
 
-// Importamos el Diálogo de Edición
+// Importamos los Diálogos
 import { EditarDerivacionDialog, type DerivacionFormData } from "../components/EditarDerivacionDialog";
+import { RegistrarDerivacionDialog } from "../components/RegistrarDerivacionDialog"; // <--- NUEVO IMPORT
 
 export function DerivacionesPage() {
   const navigate = useNavigate();
@@ -109,7 +110,7 @@ export function DerivacionesPage() {
     }
   };
 
-  // 3. ANULAR (Soft Delete / Change Status)
+  // 3. ANULAR (Soft Delete)
   const handleAnularClick = (id: string, estadoActual: string) => {
     if (estadoActual === "ANULADA") return;
     setIdToAnular(id);
@@ -174,10 +175,13 @@ export function DerivacionesPage() {
           <p className="text-muted-foreground">Gestiona las transferencias de pacientes a otras especialidades.</p>
         </div>
         
-        {/* Este botón puede abrir un modal de creación o llevar a otra página */}
-        <Button className="bg-pink-600 hover:bg-pink-700" onClick={() => toast.info("Usa el botón 'Registrar Derivación' desde el perfil del paciente")}>
-          <Plus className="mr-2 h-4 w-4" /> Nueva Derivación
-        </Button>
+        {/* --- AQUÍ ESTÁ EL CAMBIO: Botón funcional con el Diálogo --- */}
+        <RegistrarDerivacionDialog>
+            <Button className="bg-pink-600 hover:bg-pink-700">
+                <Plus className="mr-2 h-4 w-4" /> Nueva Derivación
+            </Button>
+        </RegistrarDerivacionDialog>
+
       </div>
 
       <Card>
@@ -275,7 +279,6 @@ export function DerivacionesPage() {
         </CardContent>
       </Card>
 
-      {/* Componente Dialog Editar */}
       <EditarDerivacionDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
@@ -283,7 +286,6 @@ export function DerivacionesPage() {
         onSave={handleSaveEdit}
       />
 
-      {/* Alerta de Confirmación para Anular */}
       <AlertDialog open={anularDialogOpen} onOpenChange={setAnularDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
