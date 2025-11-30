@@ -4,6 +4,9 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 const db = admin.firestore();
 
+// --- 1. CREAR USUARIO ---
+
+// Actualizamos la interfaz para incluir TODOS los campos
 interface UserFormData {
   email: string;
   password: string;
@@ -11,11 +14,17 @@ interface UserFormData {
   rol: "ADMIN" | "OBSTETRA";
   estado: "ACTIVO" | "INACTIVO";
   sucursal: string;
+  // CAMPOS NUEVOS AGREGADOS:
+  dni?: string;
+  colegiatura?: string;
+  telefono?: string;
+  jornada?: string;
 }
 
 export const crearUsuario = functions.https.onCall(
   async (request: functions.https.CallableRequest<UserFormData>) => {
     
+    // Verificación de Autenticación
     if (!request.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -23,6 +32,7 @@ export const crearUsuario = functions.https.onCall(
       );
     }
 
+    // Verificación de Rol ADMIN
     const callerUid = request.auth.uid;
     const userDoc = await db.collection("usuarios").doc(callerUid).get();
 
@@ -33,23 +43,44 @@ export const crearUsuario = functions.https.onCall(
       );
     }
 
-    const { email, password, nombre, rol, estado, sucursal } = request.data;
+    // EXTRAEMOS TODOS LOS DATOS (Incluyendo los nuevos)
+    const { 
+      email, 
+      password, 
+      nombre, 
+      rol, 
+      estado, 
+      sucursal,
+      dni,          // <--- Nuevo
+      colegiatura,  // <--- Nuevo
+      telefono,     // <--- Nuevo
+      jornada       // <--- Nuevo
+    } = request.data;
 
     try {
+      // A. Crear en Auth
       const userRecord = await admin.auth().createUser({
         email: email,
         password: password,
         displayName: nombre,
       });
 
+      // B. Asignar Claims
       await admin.auth().setCustomUserClaims(userRecord.uid, { rol: rol });
 
+      // C. Crear en Firestore (GUARDAMOS TODO)
       await db.collection("usuarios").doc(userRecord.uid).set({
         email: email,
         nombre: nombre,
         rol: rol,
         estado: estado,
         sucursal: sucursal,
+        // Guardamos los campos opcionales (o string vacío si no vienen)
+        dni: dni || "", 
+        colegiatura: colegiatura || "",
+        telefono: telefono || "",
+        jornada: jornada || "",
+        
         debe_cambiar_pwd: true,
         creado_en: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -70,11 +101,12 @@ export const crearUsuario = functions.https.onCall(
   }
 );
 
+// --- 2. ACTUALIZAR USUARIO ---
 
 interface UpdateUserData {
-  uid: string; // ID del usuario a editar
+  uid: string;
   nombre?: string;
-  password?: string; // Opcional
+  password?: string;
   rol?: "ADMIN" | "OBSTETRA";
   estado?: "ACTIVO" | "INACTIVO";
   sucursal?: string;
@@ -87,7 +119,6 @@ interface UpdateUserData {
 export const actualizarUsuario = functions.https.onCall(
   async (request: functions.https.CallableRequest<UpdateUserData>) => {
 
-    // 1. Verificación de Seguridad (Igual que arriba)
     if (!request.auth) {
       throw new functions.https.HttpsError("unauthenticated", "Usuario no autenticado.");
     }
@@ -99,7 +130,6 @@ export const actualizarUsuario = functions.https.onCall(
       throw new functions.https.HttpsError("permission-denied", "Solo admins pueden editar.");
     }
 
-    // 2. Extraer datos
     const { uid, password, ...firestoreData } = request.data;
 
     if (!uid) {
@@ -107,7 +137,7 @@ export const actualizarUsuario = functions.https.onCall(
     }
 
     try {
-      // 3. Actualizar Password en Auth (solo si se envió y no está vacío)
+      // 3. Actualizar Password en Auth (solo si se envió)
       if (password && password.trim().length > 0) {
         if (password.length < 6) {
            throw new functions.https.HttpsError("invalid-argument", "La contraseña debe tener al menos 6 caracteres.");
@@ -115,13 +145,12 @@ export const actualizarUsuario = functions.https.onCall(
         await admin.auth().updateUser(uid, { password: password });
       }
 
-      // 4. Actualizar Rol en Custom Claims (si cambió)
+      // 4. Actualizar Rol en Custom Claims
       if (firestoreData.rol) {
         await admin.auth().setCustomUserClaims(uid, { rol: firestoreData.rol });
       }
 
       // 5. Actualizar Documento en Firestore
-      // Usamos { merge: true } implícito con .update, pero aseguramos timestamp
       await db.collection("usuarios").doc(uid).update({
         ...firestoreData,
         actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
