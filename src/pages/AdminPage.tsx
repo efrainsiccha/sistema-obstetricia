@@ -463,7 +463,7 @@ export default function AdminPage() {
                           <FormLabel>Rol</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>
+                            <SelectContent className="bg-white border border-gray-200 shadow-lg">
                               <SelectItem value="OBSTETRA">Obstetra</SelectItem>
                               <SelectItem value="ADMIN">Administrador</SelectItem>
                             </SelectContent>
@@ -480,7 +480,7 @@ export default function AdminPage() {
                           <FormLabel>Jornada</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>
+                            <SelectContent className="bg-white border border-gray-200 shadow-lg">
                               <SelectItem value="MAÑANA">Mañana</SelectItem>
                               <SelectItem value="TARDE">Tarde</SelectItem>
                               <SelectItem value="NOCHE">Noche</SelectItem>
@@ -505,7 +505,7 @@ export default function AdminPage() {
                               <SelectValue placeholder="Seleccione una sucursal" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="bg-white border border-gray-200 shadow-lg">
                             {listaSucursales.map(suc => (
                               <SelectItem key={suc.id} value={suc.nombre}>{suc.nombre}</SelectItem>
                             ))}
@@ -524,7 +524,7 @@ export default function AdminPage() {
                         <FormLabel>Estado Inicial</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent>
+                          <SelectContent className="bg-white border border-gray-200 shadow-lg">
                             <SelectItem value="ACTIVO">Activo</SelectItem>
                             <SelectItem value="INACTIVO">Inactivo</SelectItem>
                           </SelectContent>

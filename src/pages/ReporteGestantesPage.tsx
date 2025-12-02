@@ -269,7 +269,7 @@ export default function ReporteGestantesPage() {
                     <SelectValue placeholder="Trimestre" />
                 </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg">
                 <SelectItem value="TODOS">Todos los trimestres</SelectItem>
                 <SelectItem value="1">1er Trimestre (1-13 sem)</SelectItem>
                 <SelectItem value="2">2do Trimestre (14-26 sem)</SelectItem>
@@ -283,7 +283,7 @@ export default function ReporteGestantesPage() {
                     <SelectValue placeholder="Nivel de Riesgo" />
                 </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg">
                 <SelectItem value="TODOS">Todos los niveles</SelectItem>
                 <SelectItem value="ALTO">Alto Riesgo</SelectItem>
                 <SelectItem value="BAJO">Bajo Riesgo</SelectItem>
