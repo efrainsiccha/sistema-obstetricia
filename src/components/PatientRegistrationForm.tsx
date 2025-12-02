@@ -245,7 +245,7 @@ export function PatientRegistrationForm() {
                             <SelectValue placeholder="Opcional" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="bg-white border border-gray-200 shadow-lg">
                           <SelectItem value="O+">O+</SelectItem>
                           <SelectItem value="O-">O-</SelectItem>
                           <SelectItem value="A+">A+</SelectItem>
