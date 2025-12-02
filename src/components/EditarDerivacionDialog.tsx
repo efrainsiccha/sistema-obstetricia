@@ -116,7 +116,7 @@ export function EditarDerivacionDialog({ open, onOpenChange, derivacion, onSave 
                         <SelectValue placeholder="Seleccione prioridad" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
                       <SelectItem value="BAJA">Baja</SelectItem>
                       <SelectItem value="MEDIA">Media</SelectItem>
                       <SelectItem value="ALTA">Alta</SelectItem>
